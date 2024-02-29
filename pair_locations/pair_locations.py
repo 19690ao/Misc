@@ -67,6 +67,10 @@ class Coordinates(ABC):
     @abstractmethod
     def __mul__(self, other):
         pass
+
+    @abstractmethod
+    def __eq__(self, other):
+        pass
     
     @abstractmethod
     def __repr__(self):
@@ -148,6 +152,9 @@ class Vector(Coordinates):
             for index, coord in enumerate(self.coordinate_array):
                 new_vector.coordinate_array[index] *= other
             return new_vector
+
+    def __eq__(self, other):
+        return isinstance(other, Vector) and self.coordinate_array == other.coordinate_array
 
     def __repr__(self):
         return f"Vector{self.get_dimensions()}({','.join([str(item) for item in self.coordinate_array])})"
