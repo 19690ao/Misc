@@ -11,8 +11,10 @@ class PairLocations:
     def __init__(self) -> None:
         self.points_a = None
         self.points_b = None
-        self.nearest_a = defaultdict(lambda: None)
-        self.nearest_b = defaultdict(lambda: None)
+        self.distances = dict()
+        self.nearest_a = []
+        self.nearest_b = []
+        self.pairs = []
 
     @staticmethod
     def get_current_file_name() -> str:
@@ -39,7 +41,7 @@ class PairLocations:
     def print_running_file_name() -> None:
         print(f"Running '{PairLocations.get_current_file_name()}'")
 
-    def generate_points(self, is_random):
+    def generate_vectors(self, is_random):
         list1, list2 = [], []
         if is_random:
             list1_length = random.randint(1, 100)
@@ -53,6 +55,38 @@ class PairLocations:
             list2 = [(1, 1), (2, 1), (1, 2), (4, -2), (-2,-7), (9,-5), (-2,-3), (-1,-1), (9,1), (-9,1)]
         self.points_a = [Vector(item) for item in list1]
         self.points_b = [Vector(item) for item in list2]
+
+    def calculate_distances(self):
+        for i,coord_a in enumerate(self.points_a):
+            for j,coord_b in enumerate(self.points_b):
+                self.distances[(i,j)] = coord_a.distance_to(coord_b)
+
+    def calculate_nearest(self):
+        for i,_ in enumerate(self.points_a):
+            nearest_distance = float("inf")
+            nearest = -1
+            for j,_ in enumerate(self.points_b):
+                current_distance = self.distances[(i,j)]
+                if current_distance < nearest_distance:
+                    nearest_distance = current_distance
+                    nearest = j
+            self.nearest_a.append(nearest)
+        
+        for j,_ in enumerate(self.points_b):
+            nearest_distance = float("inf")
+            nearest = -1
+            for i,_ in enumerate(self.points_a):
+                current_distance = self.distances[(i,j)]
+                if current_distance < nearest_distance:
+                    nearest_distance = current_distance
+                    nearest = i
+            self.nearest_b.append(nearest)
+
+    def calculate_pairs(self):
+        for i,_ in enumerate(self.points_a):
+            for j,_ in enumerate(self.points_b):
+                if self.nearest_a[i] == j and self.nearest_b[j] == i:
+                    self.pairs.append((i,j))
 
 
 class Coordinates(ABC):
@@ -87,7 +121,7 @@ class Coordinates(ABC):
 class Vector(Coordinates):
     def __init__(self, args):
         if isinstance(args, Vector):
-            args = Vector.coordinate_array
+            args = args.coordinate_array
         self.coordinate_array = args
         self.coordinate_array = self.get_coordinate_array()
     
@@ -165,15 +199,33 @@ class Vector(Coordinates):
     def distance_from_origin(self) -> float:
         return math.sqrt(sum([dimension**2 for dimension in self.coordinate_array]))
 
+    def distance_to(self, other):
+        assert isinstance(other, Vector)
+        return abs((self - other).distance_from_origin())
+    
 if __name__ == "__main__":
     PairLocations.print_running_file_name()
 
     program = PairLocations()
 
-    program.generate_points(False)
+    program.generate_vectors(False)
+
+    program.calculate_distances()
+
+    program.calculate_nearest()
+
+    program.calculate_pairs()
 
     print(program.points_a, program.points_b)
 
     print([item.distance_from_origin() for item in program.points_a])
 
-    print(Vector((1,2)) == Vector((1,2)))
+    print(program.distances)
+
+    print(program.nearest_a)
+
+    print(program.nearest_b)
+
+    print(program.pairs)
+
+    print([(program.points_a[i], program.points_b[j]) for i,j in program.pairs])
