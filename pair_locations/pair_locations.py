@@ -87,7 +87,20 @@ class PairLocations:
             for j,_ in enumerate(self.points_b):
                 if self.nearest_a[i] == j and self.nearest_b[j] == i:
                     self.pairs.append((i,j))
+        self.pairs.sort(key = lambda x: self.distances[(x[0],x[1])])
 
+    def get_pairs(self):
+        assert self.points_a != None and self.points_b != None
+        if len(self.distances.keys()) == 0:
+            self.calculate_distances()
+            self.calculate_nearest()
+            self.calculate_pairs()
+        elif self.nearest_a == [] or self.nearest_b == []:
+            self.calculate_nearest()
+            self.calculate_pairs()
+        elif self.pairs == []:
+            self.calculate_pairs()
+        return [(self.points_a[a].copy(), self.points_b[b].copy()) for a,b in self.pairs]
 
 class Coordinates(ABC):
     @abstractmethod
@@ -208,13 +221,9 @@ if __name__ == "__main__":
 
     program = PairLocations()
 
-    program.generate_vectors(False)
-
-    program.calculate_distances()
-
-    program.calculate_nearest()
-
-    program.calculate_pairs()
+    program.generate_vectors(True)
+    
+    program.get_pairs()
 
     print(program.points_a, program.points_b)
 
