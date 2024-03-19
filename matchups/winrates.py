@@ -2,6 +2,7 @@ import os
 import time
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -45,13 +46,17 @@ def click_element_by_xpath(driver, xpath_expression, wait_time=10, verbose=False
     :param xpath_expression: XPath expression to locate the element.
     """
     try:
-        # Wait for the element to be clickable
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # driver.execute_script("window.scrollTo(10, 500);")
+        # Execute JavaScript to click the element
+        # time.sleep(1)
         element = WebDriverWait(driver, wait_time).until(
             EC.element_to_be_clickable((By.XPATH, xpath_expression))
         )
-        
-        # Execute JavaScript to click the element
-        driver.execute_script("arguments[0].click();", element)
+        # Use JavaScript to trigger the hover event
+        # driver.execute_script("arguments[0].dispatchEvent(new Event('mouseover'));", element)
+        actions = ActionChains(driver)
+        actions.move_to_element(element).click().perform()
         if verbose:
             print("Element clicked successfully.")
         return True
@@ -105,13 +110,21 @@ def main():
     # Wait for an element to be clickable and then click it
     click_element_when_ready(driver, "CybotCookiebotDialogBodyButtonDecline")
     click_element_by_xpath(driver, "//li[contains(text(), 'Control type total')]")
-    time.sleep(2)
-    click_element_by_xpath(driver, "//li[.//span[contains(@class, 'league_nav_image__xFm_A')]]")
+    click_element_by_xpath(driver, "//article[contains(@id, 'dia')]")
+    # time.sleep(2)
+    click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
+    # click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select__oeWvn')]//span[contains(@class, 'league_nav_image__xFm_A')][3]")
+    # click_element_by_xpath(driver, "//span[contains(@class, 'league_nav_image__xFm_A')]")
+    # element = driver.find_element(By.XPATH, "//li[.//span[contains(@class, 'league_nav_image__xFm_A')]]")
+    # driver.execute_script("arguments[0].click();", element)
     print("Masters")
     time.sleep(3)
-    info = get_all_elements_info(driver)
+    # element = driver.find_element(By.XPATH, "//span[contains(@class, 'league_nav_image__xFm_A')]")
+    # driver.execute_script("arguments[0].dispatchEvent(new Event('mouseover'));", element)
+    # input("PAUSE")
+    # info = get_all_elements_info(driver)
     #print(info)
-    write_to_file([info], "output", "temp.txt")
+    # write_to_file([info], "output", "temp.txt")
     
     # Close the browser
     driver.quit()
