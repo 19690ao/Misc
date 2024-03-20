@@ -38,6 +38,26 @@ def click_element_when_ready(driver, element_id, wait_time=10, verbose=False):
         print(f"An error occurred: {e}")
         return False
 
+def get_element_by(driver, category, expression, wait_time=10):
+    try:
+        element = WebDriverWait(driver, wait_time).until(
+            EC.visibility_of_all_elements_located((category, expression))
+        )
+        return element[0]
+    except Exception as e:
+        print(f"An error occurred while getting the element: {e}")
+        return None
+    
+def get_all_elements_by(driver, category, expression, wait_time=10):
+    try:
+        elements = WebDriverWait(driver, wait_time).until(
+            EC.visibility_of_all_elements_located((category, expression))
+        )
+        return elements
+    except Exception as e:
+        print(f"An error occurred while getting the element: {e}")
+        return None
+
 def click_element_by_xpath(driver, xpath_expression, wait_time=10, verbose=False):
     """
     Clicks an element on the page using its XPath expression, waiting for the element to be clickable.
@@ -117,49 +137,56 @@ def main():
     click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
     # Zoom out to ensure all elements are visible
     change_zoom(driver, 0.5)
-    table = driver.find_element(By.CLASS_NAME, "dia_table_inner__r5tna")
-    print(table)
-    # If the table is found, proceed to extract its information
-    rows = table.find_elements(By.TAG_NAME, "tr")
+    table = get_element_by(driver, By.CLASS_NAME, "dia_table_inner__r5tna")
+    rows = get_all_elements_by(table, By.TAG_NAME, "tr")
+
     output_list = [[],[]]
     
     for row in rows:
-        cols = row.find_elements(By.TAG_NAME, "td")
-        name = row.find_element(By.TAG_NAME, "th").text
+        cols = get_all_elements_by(row, By.TAG_NAME, "td")
+        name = get_element_by(row, By.TAG_NAME, "th").text
+        if not name: continue
         output_list[0].append(name)
         output_list.append([])
-        # print(row_num, len(cols), end=' ')
         for col in cols:
             # Extract and print the text from each cell
             if not col.text: continue
             if col.text == '-': break
-            # print(col.text, end=',')
-            output_list[-1].append(round(float(col.text)/10, 4))
+            output_list[-1].append(str(round(float(col.text)/10, 4)))
         print(output_list[-1])
     name_indices = {name: index for index, name in enumerate(output_list[0])}
     driver.get("https://www.streetfighter.com/6/buckler/en/stats/usagerate")
     click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
     change_zoom(driver, 0.5)
     # Find the unordered list by its class name
-    ul_element = driver.find_element(By.XPATH, "//div[contains(@class, 'usagerate_league__MObUs') and .//img[@alt='MASTER']]/ul[@class='usagerate_character__Bju8S']")
+    ul_element = get_element_by(driver, By.XPATH, "//div[contains(@class, 'usagerate_league__MObUs') and .//img[@alt='MASTER']]/ul[@class='usagerate_character__Bju8S']")
     # Find all list items within the unordered list
-    li_elements = ul_element.find_elements(By.TAG_NAME, "li")
+    li_elements = get_all_elements_by(ul_element, By.TAG_NAME, "li")
     # Iterate over each list item to extract the name and percentage
     output_list[1] = [None]*len(output_list[0])
+    print(len(li_elements))
     for li in li_elements:
         # Extract the name from the <dt> element
-        name = li.find_element(By.TAG_NAME, "dt").text
+        name = get_element_by(li, By.TAG_NAME, "dt").text
         
         # Extract the percentage from the <span class="usagerate_play_rate__aChNq"> element
-        percentage = li.find_element(By.CLASS_NAME, "usagerate_play_rate__aChNq").text
-        if not name or not percentage: continue
+        percentage = get_element_by(li, By.CLASS_NAME, "usagerate_play_rate__aChNq").text
+        # if not name or not percentage: continue
+        assert name in name_indices.keys()
         index = name_indices[name]
         print(f"Name: {name}, Percentage: {percentage}")
-        output_list[1][index] = round(float(percentage)/100, 5)
+        output_list[1][index] = str(round(float(percentage)/100, 5))
     assert len(output_list[0]) == len(output_list[1])
     # Close the browser
     driver.quit()
-
     
+    with open("winrates.csv", "w") as file:
+        for line_list in output_list:
+            print(line_list)
+            line = ','.join(line_list)
+            
+            file.write(line)
+            file.write('\n')
+
 if __name__ == "__main__":
     main()

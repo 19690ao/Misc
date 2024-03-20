@@ -113,7 +113,6 @@ def main():
     matchup_chart = MatchupChart.load_matchup_data('winrates.csv')
     print(matchup_chart.names)
     print(matchup_chart.playrates)
-    print(matchup_chart.get_winrate("UCLA", "Richmond"))
 
     for start, i in enumerate(matchup_chart.names):
         for j in matchup_chart.names[start:]:
