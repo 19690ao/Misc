@@ -129,7 +129,8 @@ def change_zoom(driver, zoom=1):
     driver.execute_script(f"document.body.style.zoom='{zoom}';")
 
 def main():
-    rank = input("What Rank?\n>> ").upper()
+    rank = "MASTER"
+    if False: rank = input("What Rank?\n>> ").upper()
     driver = initialize_chrome_driver("https://www.streetfighter.com/6/buckler/stats/dia")
     # Wait for an element to be clickable and then click it
     click_element_when_ready(driver, "CybotCookiebotDialogBodyButtonDecline")

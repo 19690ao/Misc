@@ -33,7 +33,6 @@ class MatchupChart():
             return self.matchup_data[i][j]
         else:
             return 0.5
-        
 
 
     def load_matchup_data(file_path) -> "MatchupChart":
@@ -46,27 +45,23 @@ class MatchupChart():
 
     def get_secondaries(self, name):
         assert name in self.names
-        unweighted_name = name
-        weighted_name = name
-        unweighted = -1
-        weighted = -1
+        data = dict()
+        other_names = []
         for secondary in self.names:
             if secondary == name: continue
-            a, b = self.get_group_winrate([name, secondary])
-            if unweighted < a:
-                unweighted_name = secondary
-                unweighted = a
-            if weighted < b:
-                weighted_name = secondary
-                weighted = b
+            other_names.append(secondary)
+            data[secondary] = self.get_group_winrate([name, secondary])
+        unweighted_names = sorted(other_names, key=lambda x: data[x][0], reverse=True)
+        weighted_names = sorted(other_names, key=lambda x: data[x][1], reverse=True)  
 
-        return (unweighted_name, weighted_name)
+        return (unweighted_names, weighted_names)
 
     def get_group_winrate(self, names) -> tuple[float]:
         maxed_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent) for name in names] for index, opponent in enumerate(self.names)]]
         # print(maxed_winrates)
         unweighted = sum(maxed_winrates)/self.size
         weighted = sum([maxed_winrates[i]*self.playrates[i] for i in range(self.size)])
+        # print(unweighted, weighted)
         return (unweighted, weighted)
     
 def get_file_list(folder_path, file_name):
@@ -145,11 +140,22 @@ def main():
         for j in matchup_chart.names[start:]:
             assert matchup_chart.get_winrate(i, j) == 1-matchup_chart.get_winrate(j, i)
 
-    for index, name in enumerate(matchup_chart.names):
-        print(f"{name}:", matchup_chart.secondaries[index])
+    with open("secondaries.txt", 'w') as file:
+        c1_size = 12
+        c2_size = 12
+        for index, name in enumerate(matchup_chart.names):
+            secondaries = matchup_chart.secondaries[index]
+            line = f"{name}:"+'\n'
+            line += "UNWEIGHTED:"+' '*(c1_size-11)+str(secondaries[0])+'\n'
+            line += "WEIGHTED:"+' '*(c1_size-9)+str(secondaries[1])+'\n'
+            print(line)
+            file.write(line+'\n')
+
 
     ans = matchup_chart.get_secondaries(input("What Character?\n>> ").upper())
-    print(ans)
+    print(ans[0])
+    print(ans[1])
+    
 
 if __name__ == "__main__":
     main()
