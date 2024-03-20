@@ -40,6 +40,31 @@ class MatchupChart():
             winrates = [list(map(float, line)) for line in lines[3:]]
         return MatchupChart(names, playrates, winrates)
 
+    def get_secondaries(self, name):
+        assert name in self.names
+        unweighted_name = name
+        weighted_name = name
+        unweighted = -1
+        weighted = -1
+        for secondary in self.names:
+            if secondary == name: continue
+            a, b = self.get_group_winrate([name, secondary])
+            if unweighted < a:
+                unweighted_name = secondary
+                unweighted = a
+            if weighted < b:
+                weighted_name = secondary
+                weighted = b
+
+        return (unweighted_name, weighted_name)
+
+    def get_group_winrate(self, names) -> tuple[float]:
+        maxed_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent) for name in names] for index, opponent in enumerate(self.names)]]
+        print(maxed_winrates)
+        unweighted = sum(maxed_winrates)/self.size
+        weighted = sum([maxed_winrates[i]*self.playrates[i] for i in range(self.size)])
+        return (unweighted, weighted)
+    
 def get_file_list(folder_path, file_name):
     # Join folder path and file name to create the full file path
     full_file_path = os.path.join(folder_path, file_name)
@@ -116,9 +141,10 @@ def main():
 
     for start, i in enumerate(matchup_chart.names):
         for j in matchup_chart.names[start:]:
-            # print(i, j)
             assert matchup_chart.get_winrate(i, j) == 1-matchup_chart.get_winrate(j, i)
 
+    ans = matchup_chart.get_secondaries(input("What Character?\n>> ").upper())
+    print(ans)
 
 if __name__ == "__main__":
     main()
