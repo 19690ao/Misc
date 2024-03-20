@@ -129,12 +129,13 @@ def change_zoom(driver, zoom=1):
     driver.execute_script(f"document.body.style.zoom='{zoom}';")
 
 def main():
+    rank = input("What Rank?\n>> ").upper()
     driver = initialize_chrome_driver("https://www.streetfighter.com/6/buckler/stats/dia")
     # Wait for an element to be clickable and then click it
     click_element_when_ready(driver, "CybotCookiebotDialogBodyButtonDecline")
     click_element_by_xpath(driver, "//li[contains(text(), 'Control type total')]")
     click_element_by_xpath(driver, "//article[contains(@id, 'dia')]")
-    click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
+    click_element_by_xpath(driver, f"//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, '{rank}')]/ancestor::span[contains(@class, 'league_nav_image')]")
     # Zoom out to ensure all elements are visible
     change_zoom(driver, 0.5)
     table = get_element_by(driver, By.CLASS_NAME, "dia_table_inner__r5tna")
@@ -148,7 +149,7 @@ def main():
         if not name: continue
         output_list[0].append(name)
         output_list.append([])
-        for col in cols:
+        for col in cols[1:]:
             # Extract and print the text from each cell
             if not col.text: continue
             if col.text == '-': break
@@ -156,10 +157,10 @@ def main():
         print(output_list[-1])
     name_indices = {name: index for index, name in enumerate(output_list[0])}
     driver.get("https://www.streetfighter.com/6/buckler/en/stats/usagerate")
-    click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
+    click_element_by_xpath(driver, f"//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, '{rank}')]/ancestor::span[contains(@class, 'league_nav_image')]")
     change_zoom(driver, 0.5)
     # Find the unordered list by its class name
-    ul_element = get_element_by(driver, By.XPATH, "//div[contains(@class, 'usagerate_league__MObUs') and .//img[@alt='MASTER']]/ul[@class='usagerate_character__Bju8S']")
+    ul_element = get_element_by(driver, By.XPATH, f"//div[contains(@class, 'usagerate_league__MObUs') and .//img[@alt='{rank}']]/ul[@class='usagerate_character__Bju8S']")
     # Find all list items within the unordered list
     li_elements = get_all_elements_by(ul_element, By.TAG_NAME, "li")
     # Iterate over each list item to extract the name and percentage

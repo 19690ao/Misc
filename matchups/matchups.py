@@ -18,6 +18,10 @@ class MatchupChart():
                 # print(i,j)
                 # print(winrates[i-1])                   
                 self.matchup_data[i][j] = winrates[i-1][j]
+        self.secondaries = []
+        for index in range(self.size):
+            name = self.names[index]
+            self.secondaries.append(self.get_secondaries(name))
 
     def get_winrate(self, a, b) -> float:
         i = self.indices[a]
@@ -60,7 +64,7 @@ class MatchupChart():
 
     def get_group_winrate(self, names) -> tuple[float]:
         maxed_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent) for name in names] for index, opponent in enumerate(self.names)]]
-        print(maxed_winrates)
+        # print(maxed_winrates)
         unweighted = sum(maxed_winrates)/self.size
         weighted = sum([maxed_winrates[i]*self.playrates[i] for i in range(self.size)])
         return (unweighted, weighted)
@@ -129,8 +133,6 @@ def print_vert(lst):
     for item in lst:
         print(item)
 
-
-
 def main():
     print("Starting...")
 
@@ -142,6 +144,9 @@ def main():
     for start, i in enumerate(matchup_chart.names):
         for j in matchup_chart.names[start:]:
             assert matchup_chart.get_winrate(i, j) == 1-matchup_chart.get_winrate(j, i)
+
+    for index, name in enumerate(matchup_chart.names):
+        print(f"{name}:", matchup_chart.secondaries[index])
 
     ans = matchup_chart.get_secondaries(input("What Character?\n>> ").upper())
     print(ans)
