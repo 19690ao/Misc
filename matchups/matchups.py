@@ -10,6 +10,7 @@ class MatchupChart():
         self.names = names
         self.indices = {name: index for index, name in enumerate(self.names)}
         self.size = len(self.names)
+        assert self.size == len(playrates)
         self.playrates = playrates
         self.matchup_data = {index: dict() for index in range(1, self.size)}
         for i in range(self.size):
@@ -36,7 +37,7 @@ class MatchupChart():
             lines = list(csv.reader(file))
             names = lines[0]
             playrates = list(map(float, lines[1]))
-            winrates = [list(map(float, line)) for line in lines[2:]]
+            winrates = [list(map(float, line)) for line in lines[3:]]
         return MatchupChart(names, playrates, winrates)
 
 def get_file_list(folder_path, file_name):

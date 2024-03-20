@@ -105,29 +105,61 @@ def write_to_file(lst, folder, filename):
         for item in lst:
             file.write(f"{item}\n")
 
+def change_zoom(driver, zoom=1):
+    driver.execute_script(f"document.body.style.zoom='{zoom}';")
+
 def main():
     driver = initialize_chrome_driver("https://www.streetfighter.com/6/buckler/stats/dia")
     # Wait for an element to be clickable and then click it
     click_element_when_ready(driver, "CybotCookiebotDialogBodyButtonDecline")
     click_element_by_xpath(driver, "//li[contains(text(), 'Control type total')]")
     click_element_by_xpath(driver, "//article[contains(@id, 'dia')]")
-    # time.sleep(2)
     click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
-    # click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select__oeWvn')]//span[contains(@class, 'league_nav_image__xFm_A')][3]")
-    # click_element_by_xpath(driver, "//span[contains(@class, 'league_nav_image__xFm_A')]")
-    # element = driver.find_element(By.XPATH, "//li[.//span[contains(@class, 'league_nav_image__xFm_A')]]")
-    # driver.execute_script("arguments[0].click();", element)
-    print("Masters")
-    time.sleep(3)
-    # element = driver.find_element(By.XPATH, "//span[contains(@class, 'league_nav_image__xFm_A')]")
-    # driver.execute_script("arguments[0].dispatchEvent(new Event('mouseover'));", element)
-    # input("PAUSE")
-    # info = get_all_elements_info(driver)
-    #print(info)
+    # Zoom out to ensure all elements are visible
+    change_zoom(driver, 0.5)
+    table = driver.find_element(By.CLASS_NAME, "dia_table_inner__r5tna")
+    print(table)
+    # If the table is found, proceed to extract its information
+    rows = table.find_elements(By.TAG_NAME, "tr")
+    output_list = [[],[]]
     
+    for row in rows:
+        cols = row.find_elements(By.TAG_NAME, "td")
+        name = row.find_element(By.TAG_NAME, "th").text
+        output_list[0].append(name)
+        output_list.append([])
+        # print(row_num, len(cols), end=' ')
+        for col in cols:
+            # Extract and print the text from each cell
+            if not col.text: continue
+            if col.text == '-': break
+            # print(col.text, end=',')
+            output_list[-1].append(round(float(col.text)/10, 4))
+        print(output_list[-1])
+    name_indices = {name: index for index, name in enumerate(output_list[0])}
+    driver.get("https://www.streetfighter.com/6/buckler/en/stats/usagerate")
+    click_element_by_xpath(driver, "//ul[contains(@class, 'league_nav_league_select')]//img[contains(@alt, 'MASTER')]/ancestor::span[contains(@class, 'league_nav_image')]")
+    change_zoom(driver, 0.5)
+    # Find the unordered list by its class name
+    ul_element = driver.find_element(By.XPATH, "//div[contains(@class, 'usagerate_league__MObUs') and .//img[@alt='MASTER']]/ul[@class='usagerate_character__Bju8S']")
+    # Find all list items within the unordered list
+    li_elements = ul_element.find_elements(By.TAG_NAME, "li")
+    # Iterate over each list item to extract the name and percentage
+    output_list[1] = [None]*len(output_list[0])
+    for li in li_elements:
+        # Extract the name from the <dt> element
+        name = li.find_element(By.TAG_NAME, "dt").text
+        
+        # Extract the percentage from the <span class="usagerate_play_rate__aChNq"> element
+        percentage = li.find_element(By.CLASS_NAME, "usagerate_play_rate__aChNq").text
+        if not name or not percentage: continue
+        index = name_indices[name]
+        print(f"Name: {name}, Percentage: {percentage}")
+        output_list[1][index] = round(float(percentage)/100, 5)
+    assert len(output_list[0]) == len(output_list[1])
     # Close the browser
     driver.quit()
 
-
+    
 if __name__ == "__main__":
     main()
