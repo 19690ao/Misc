@@ -124,7 +124,6 @@ def main():
     # input("PAUSE")
     # info = get_all_elements_info(driver)
     #print(info)
-    # write_to_file([info], "output", "temp.txt")
     
     # Close the browser
     driver.quit()

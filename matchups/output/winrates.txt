@@ -1,1 +1,0 @@
-<button id="CybotCookiebotDialogBodyButtonDecline" class="CybotCookiebotDialogBodyButton" tabindex="0" lang="en">Use necessary cookies only</button>

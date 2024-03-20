@@ -1,7 +1,43 @@
+import csv
 import time
 import os
 import requests
 from functools import reduce
+
+class MatchupChart():
+    def __init__(self, names, playrates, winrates) -> None:
+        # print(names, playrates, winrates)
+        self.names = names
+        self.indices = {name: index for index, name in enumerate(self.names)}
+        self.size = len(self.names)
+        self.playrates = playrates
+        self.matchup_data = {index: dict() for index in range(1, self.size)}
+        for i in range(self.size):
+            for j in range(i):
+                # print(i,j)
+                # print(winrates[i-1])                   
+                self.matchup_data[i][j] = winrates[i-1][j]
+
+    def get_winrate(self, a, b) -> float:
+        i = self.indices[a]
+        j = self.indices[b]
+        # print(self.matchup_data)
+        if i < j:
+            return 1-self.matchup_data[j][i]
+        if j < i:
+            return self.matchup_data[i][j]
+        else:
+            return 0.5
+        
+
+
+    def load_matchup_data(file_path) -> "MatchupChart":
+        with open(file_path, mode='r', newline='') as file:
+            lines = list(csv.reader(file))
+            names = lines[0]
+            playrates = list(map(float, lines[1]))
+            winrates = [list(map(float, line)) for line in lines[2:]]
+        return MatchupChart(names, playrates, winrates)
 
 def get_file_list(folder_path, file_name):
     # Join folder path and file name to create the full file path
@@ -67,13 +103,22 @@ def print_vert(lst):
     for item in lst:
         print(item)
 
+
+
 def main():
     print("Starting...")
-    raw_website_url = "https://www.streetfighter.com/6/buckler/en/stats/dia"
-    raw_website_url = replace_https_with_http(raw_website_url)
-    temp = get_html_from_url(raw_website_url)
-    print(temp)
-    write_to_file([temp], "output", "matchups.txt")
+
+    # Example usage
+    matchup_chart = MatchupChart.load_matchup_data('winrates.csv')
+    print(matchup_chart.names)
+    print(matchup_chart.playrates)
+    print(matchup_chart.get_winrate("UCLA", "Richmond"))
+
+    for start, i in enumerate(matchup_chart.names):
+        for j in matchup_chart.names[start:]:
+            # print(i, j)
+            assert matchup_chart.get_winrate(i, j) == 1-matchup_chart.get_winrate(j, i)
+
 
 if __name__ == "__main__":
     main()
