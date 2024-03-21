@@ -1,0 +1,22 @@
+UNWEIGHTED          WEIGHTED
+KEN                 KEN
+LUKE                LUKE
+RYU                 RYU
+CAMMY               CAMMY
+DEE JAY             DEE JAY
+JURI                JURI
+JAMIE               JAMIE
+JP                  JP
+MARISA              MARISA
+ZANGIEF             ZANGIEF
+CHUN-LI             CHUN-LI
+GUILE               GUILE
+MANON               MANON
+KIMBERLY            KIMBERLY
+A.K.I.              E. HONDA
+RASHID              BLANKA
+E. HONDA            RASHID
+BLANKA              A.K.I.
+LILY                LILY
+DHALSIM             DHALSIM
+ED                  ED

@@ -2,7 +2,6 @@ import csv
 import time
 import os
 import requests
-from functools import reduce
 
 class MatchupChart():
     def __init__(self, names, playrates, winrates) -> None:
@@ -12,16 +11,15 @@ class MatchupChart():
         self.size = len(self.names)
         assert self.size == len(playrates)
         self.playrates = playrates
-        self.matchup_data = {index: dict() for index in range(1, self.size)}
-        for i in range(self.size):
-            for j in range(i):
-                # print(i,j)
-                # print(winrates[i-1])                   
-                self.matchup_data[i][j] = winrates[i-1][j]
-        self.secondaries = []
-        for index in range(self.size):
-            name = self.names[index]
-            self.secondaries.append(self.get_secondaries(name))
+        self.matchup_data = {i: {j: winrates[i-1][j] for j in range(i)} for i in range(1, self.size)}
+        self.secondaries = [[[self.indices[name] for name in names] for names in self.get_secondaries(self.names[index])] for index in range(self.size)]
+        self.tierlists = [[self.indices[name] for name in tierlist] for tierlist in self.get_tierlists()]
+
+    def get_tierlists(self):
+        data = {name: self.get_group_winrate([name]) for name in self.names}
+        unweighted = sorted(self.names, key=lambda x: data[x][2], reverse=True)
+        weighted = sorted(self.names, key=lambda x: data[x][3], reverse=True)
+        return (unweighted, weighted)    
 
     def get_winrate(self, a, b) -> float:
         i = self.indices[a]
@@ -43,6 +41,10 @@ class MatchupChart():
             winrates = [list(map(float, line)) for line in lines[3:]]
         return MatchupChart(names, playrates, winrates)
 
+    def get_playrate(self, name):
+        assert name in self.names
+        return self.playrates[self.indices[name]]
+
     def get_secondaries(self, name):
         assert name in self.names
         data = dict()
@@ -53,16 +55,21 @@ class MatchupChart():
             data[secondary] = self.get_group_winrate([name, secondary])
         unweighted_names = sorted(other_names, key=lambda x: data[x][0], reverse=True)
         weighted_names = sorted(other_names, key=lambda x: data[x][1], reverse=True)  
-
-        return (unweighted_names, weighted_names)
+        exp_unweighted_names = sorted(other_names, key=lambda x: data[x][2], reverse=True)
+        exp_weighted_names = sorted(other_names, key=lambda x: data[x][3], reverse=True)
+        return (unweighted_names, weighted_names, exp_unweighted_names, exp_weighted_names)
 
     def get_group_winrate(self, names) -> tuple[float]:
-        maxed_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent) for name in names] for index, opponent in enumerate(self.names)]]
+        # print("RAW")
+        # print([[self.get_winrate(name, opponent) for name in names] for opponent in self.names])
+        maxed_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent) for name in names] for opponent in self.names]]
+        experienced_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent)*self.get_playrate(name)/self.get_playrate(opponent) for name in names] for opponent in self.names]]
         # print(maxed_winrates)
         unweighted = sum(maxed_winrates)/self.size
         weighted = sum([maxed_winrates[i]*self.playrates[i] for i in range(self.size)])
-        # print(unweighted, weighted)
-        return (unweighted, weighted)
+        experienced_unweighted = sum(experienced_winrates)/self.size
+        experienced_weighted = sum([experienced_winrates[i]*self.playrates[i] for i in range(self.size)])
+        return (unweighted, weighted, experienced_unweighted, experienced_weighted)
     
 def get_file_list(folder_path, file_name):
     # Join folder path and file name to create the full file path
@@ -128,6 +135,13 @@ def print_vert(lst):
     for item in lst:
         print(item)
 
+def write_and_print(text, file, end='\n'):
+    # Write the text to the file
+    file.write(text + end)
+    # Print the text to the console
+    print(text, end=end)
+
+
 def main():
     print("Starting...")
 
@@ -141,20 +155,28 @@ def main():
             assert matchup_chart.get_winrate(i, j) == 1-matchup_chart.get_winrate(j, i)
 
     with open("secondaries.txt", 'w') as file:
-        c1_size = 12
-        c2_size = 12
-        for index, name in enumerate(matchup_chart.names):
-            secondaries = matchup_chart.secondaries[index]
-            line = f"{name}:"+'\n'
-            line += "UNWEIGHTED:"+' '*(c1_size-11)+str(secondaries[0])+'\n'
-            line += "WEIGHTED:"+' '*(c1_size-9)+str(secondaries[1])+'\n'
-            print(line)
-            file.write(line+'\n')
+        c1_size = 20
+        # c2_size = 12
+        for name in matchup_chart.names:
+            secondaries = matchup_chart.get_secondaries(name)
+            write_and_print(f"{name}:", file)
+            write_and_print("UNWEIGHTED:"+' '*(c1_size-11)+str(secondaries[0]), file)
+            write_and_print("WEIGHTED:"+' '*(c1_size-9)+str(secondaries[1]), file)
+            write_and_print("EXP UNWEIGHTED:"+' '*(c1_size-15)+str(secondaries[2]), file)
+            write_and_print("EXP WEIGHTED:"+' '*(c1_size-13)+str(secondaries[2]), file)
+            write_and_print('', file)
+            
 
+    with open("tierlists.txt", 'w') as file:
+        c1_size = 20
+        tierlists = matchup_chart.get_tierlists()
+        write_and_print("UNWEIGHTED"+' '*(c1_size-10)+"WEIGHTED", file)
+        assert len(tierlists[0]) == len(tierlists[1])
+        for i in range(len(tierlists[0])):
+            write_and_print(tierlists[0][i]+' '*(c1_size-len(tierlists[0][i]))+tierlists[1][i], file)
 
     ans = matchup_chart.get_secondaries(input("What Character?\n>> ").upper())
-    print(ans[0])
-    print(ans[1])
+    print(*ans, sep='\n')
     
 
 if __name__ == "__main__":
