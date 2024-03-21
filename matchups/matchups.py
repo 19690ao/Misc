@@ -32,6 +32,8 @@ class MatchupChart():
         else:
             return 0.5
 
+    def get_experience_coefficient(self, name, opponent):
+        return self.get_playrate(name)/self.get_playrate(opponent)
 
     def load_matchup_data(file_path) -> "MatchupChart":
         with open(file_path, mode='r', newline='') as file:
@@ -63,7 +65,7 @@ class MatchupChart():
         # print("RAW")
         # print([[self.get_winrate(name, opponent) for name in names] for opponent in self.names])
         maxed_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent) for name in names] for opponent in self.names]]
-        experienced_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent)*self.get_playrate(name)/self.get_playrate(opponent) for name in names] for opponent in self.names]]
+        experienced_winrates = [max(winrates) for winrates in [[self.get_winrate(name, opponent)*self.get_experience_coefficient(name, opponent) for name in names] for opponent in self.names]]
         # print(maxed_winrates)
         unweighted = sum(maxed_winrates)/self.size
         weighted = sum([maxed_winrates[i]*self.playrates[i] for i in range(self.size)])
@@ -168,12 +170,13 @@ def main():
             
 
     with open("tierlists.txt", 'w') as file:
-        c1_size = 20
+        c1_size = 6
+        c2_size = 20
         tierlists = matchup_chart.get_tierlists()
-        write_and_print("UNWEIGHTED"+' '*(c1_size-10)+"WEIGHTED", file)
+        write_and_print("RANK"+' '*(c1_size-4)+"UNWEIGHTED"+' '*(c2_size-10)+"WEIGHTED", file)
         assert len(tierlists[0]) == len(tierlists[1])
         for i in range(len(tierlists[0])):
-            write_and_print(tierlists[0][i]+' '*(c1_size-len(tierlists[0][i]))+tierlists[1][i], file)
+            write_and_print(str(i+1)+' '*(c1_size-len(str(i+1)))+tierlists[0][i]+' '*(c2_size-len(tierlists[0][i]))+tierlists[1][i], file)
 
     ans = matchup_chart.get_secondaries(input("What Character?\n>> ").upper())
     print(*ans, sep='\n')

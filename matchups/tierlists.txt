@@ -1,22 +1,22 @@
-UNWEIGHTED          WEIGHTED
-KEN                 KEN
-LUKE                LUKE
-RYU                 RYU
-CAMMY               CAMMY
-DEE JAY             DEE JAY
-JURI                JURI
-JAMIE               JAMIE
-JP                  JP
-MARISA              MARISA
-ZANGIEF             ZANGIEF
-CHUN-LI             CHUN-LI
-GUILE               GUILE
-MANON               MANON
-KIMBERLY            KIMBERLY
-A.K.I.              E. HONDA
-RASHID              BLANKA
-E. HONDA            RASHID
-BLANKA              A.K.I.
-LILY                LILY
-DHALSIM             DHALSIM
-ED                  ED
+RANK  UNWEIGHTED          WEIGHTED
+1     KEN                 KEN
+2     LUKE                LUKE
+3     RYU                 RYU
+4     CAMMY               CAMMY
+5     DEE JAY             DEE JAY
+6     JURI                JURI
+7     JAMIE               JAMIE
+8     JP                  JP
+9     MARISA              MARISA
+10    ZANGIEF             ZANGIEF
+11    CHUN-LI             CHUN-LI
+12    GUILE               GUILE
+13    MANON               MANON
+14    KIMBERLY            KIMBERLY
+15    A.K.I.              E. HONDA
+16    RASHID              BLANKA
+17    E. HONDA            RASHID
+18    BLANKA              A.K.I.
+19    LILY                LILY
+20    DHALSIM             DHALSIM
+21    ED                  ED
