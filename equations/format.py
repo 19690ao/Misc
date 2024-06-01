@@ -78,6 +78,16 @@ def convert_to_latex(equation):
     Returns:
     str: The converted LaTeX equation.
     """
+    # First, replace \left( and \right) with ( and )
+    equation = equation.replace('\\left(', '(')
+    equation = equation.replace('\\right)', ')')
+
+    # Add LaTeX formatting for parentheses and plus/minus signs first
+    equation = equation.replace('(', '\\left(')
+    equation = equation.replace(')', '\\right)')
+    equation = equation.replace('+', '+')
+    equation = equation.replace('-', '-')
+    
     # Replace division operations with LaTeX fractions
     equation = re.sub(r'(\d+)/(\d+)', r'\\frac{\1}{\2}', equation)
     
@@ -87,20 +97,16 @@ def convert_to_latex(equation):
     # Replace powers with LaTeX superscripts
     equation = re.sub(r'(\w+)\^(\d+)', r'\1^{\2}', equation)
     
-    # Add LaTeX formatting for parentheses and plus/minus signs
-    equation = equation.replace('(', '\\left(')
-    equation = equation.replace(')', '\\right)')
-    equation = equation.replace('+', '+')
-    equation = equation.replace('-', '-')
-    
     return equation
+
 
 def format_file(file_name):
     # Step 1: Open the file in read mode
     with open(file_name, 'r') as file:
         content = file.read()
+    print(content)
     content = convert_to_latex(content)
-    # print(content)
+    print(content)
     solutions = solve_latex_equation(content)
     # print(type(solutions))
     # print(type(solutions[0]))

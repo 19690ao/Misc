@@ -1,22 +1,22 @@
 RANK  UNWEIGHTED          WEIGHTED
 1     KEN                 KEN
-2     LUKE                LUKE
-3     RYU                 RYU
+2     RYU                 RYU
+3     LUKE                LUKE
 4     CAMMY               CAMMY
-5     DEE JAY             DEE JAY
-6     JURI                JURI
-7     JAMIE               JAMIE
-8     JP                  JP
+5     ED                  ED
+6     JAMIE               JAMIE
+7     DEE JAY             JURI
+8     JURI                DEE JAY
 9     MARISA              MARISA
 10    ZANGIEF             ZANGIEF
-11    CHUN-LI             CHUN-LI
-12    GUILE               GUILE
+11    JP                  JP
+12    CHUN-LI             CHUN-LI
 13    MANON               MANON
-14    KIMBERLY            KIMBERLY
-15    A.K.I.              E. HONDA
-16    RASHID              BLANKA
-17    E. HONDA            RASHID
-18    BLANKA              A.K.I.
-19    LILY                LILY
-20    DHALSIM             DHALSIM
-21    ED                  ED
+14    GUILE               GUILE
+15    KIMBERLY            KIMBERLY
+16    A.K.I.              A.K.I.
+17    RASHID              RASHID
+18    BLANKA              BLANKA
+19    E. HONDA            E. HONDA
+20    LILY                LILY
+21    DHALSIM             DHALSIM
