@@ -20,7 +20,9 @@ class Board():
             print(self)
             while (True):
                 user_num = input("Input a valid move >> ")
-                if (not user_num.isdigit() or int(user_num) not in move_set):
+                if (user_num.lower() in {"exit", "break", "quit", "q"}):
+                    quit()
+                elif (not user_num.isdigit() or int(user_num) not in move_set):
                     print(self)
                     print(f"Invalid move '{user_num}'")
                 else:
