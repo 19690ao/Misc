@@ -16,9 +16,7 @@ def minimal_solutions(target, using):
     visited = dict([(number, 1) for number in using])
     while queue:
         path = queue.pop(0)
-        # print(f"{parsed_solution(path, operator_dict)}")
         node, _ = path[-1]
-        # input()
         if target in visited and visited[target] < len(path):
             break
         if node in visited and visited[node] < len(path):
@@ -26,13 +24,11 @@ def minimal_solutions(target, using):
         if node == target:
             if node in visited and visited[node] < len(path):
                 break
-            found_solutions.append(parsed_solution(path, operator_dict))
-            # input(f"FOUND: {path}")   
+            found_solutions.append(parsed_solution(path, operator_dict)) 
         else:
             edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
             for edge in edges:
                 operator, operand = edge
-                # print(edge, node)
                 neighbour = operator(node, operand)
                 if neighbour in visited and visited[neighbour] < len(path)+1:
                     continue
@@ -40,8 +36,6 @@ def minimal_solutions(target, using):
                 new_path.append((neighbour, edge))
                 queue.append(new_path)
                 visited[neighbour] = visited[node] + 1
-                # print(visited[node], path)
-            # assert visited[node] == len(path)
 
     return found_solutions
 
