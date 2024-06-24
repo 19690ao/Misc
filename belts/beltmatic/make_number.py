@@ -4,56 +4,69 @@ def add(a, b):
 def mult(a, b):
     return a*b
 
+def sub(a, b):
+    return a-b
+
 def minimal_solutions(target, using):
     if target in using:
-        return []
-    # Starting to realize the graph
-    operator_count = 0
-    operator_dict = {add: '+', mult: '*'}
+        return [str(target)]
+    operator_dict = {add: '+', mult: '*', sub: '-'}
     found_solutions = []
-    found = False
-    queue = using.copy()
-    visited = dict([(start, 0) for start in queue])
-    parent = dict([(start, []) for start in queue])
-
+    queue = [[(number, (None, None))] for number in using]
+    visited = dict([(number, 1) for number in using])
     while queue:
-        current_node = queue.pop(0)
-        if found and visited[current_node] > visited[target]-1:
+        path = queue.pop(0)
+        # print(f"{parsed_solution(path, operator_dict)}")
+        node, _ = path[-1]
+        # input()
+        if target in visited and visited[target] < len(path):
             break
-        adjacent_edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
-        for adjacent_edge in adjacent_edges:
-            operator, operand = adjacent_edge
-            adjacent_node = operator(current_node, operand)
-            if adjacent_node not in visited:
-                visited[adjacent_node] = visited[current_node] + 1
-                queue.append(adjacent_node)
-                parent[adjacent_node] = [(current_node, adjacent_edge)]
-            elif visited[current_node] == visited[adjacent_node]:
-                parent[adjacent_node].append((current_node, adjacent_edge))
-        if current_node == target:
-            print(f"Op count is {visited[current_node]}")
-            found = True
-    path = []
-    last_node = target
-    while parent.get(target) != None:
-        print(path)
-        for edge in path[-1]:
-            operator, operand = edge
-            path.append(parent[path[-1]])
-    
-    path.reverse()
-    found_solutions.append(path)        
-    print(visited)
-    return parent
+        if node in visited and visited[node] < len(path):
+            break
+        if node == target:
+            if node in visited and visited[node] < len(path):
+                break
+            found_solutions.append(parsed_solution(path, operator_dict))
+            # input(f"FOUND: {path}")   
+        else:
+            edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
+            for edge in edges:
+                operator, operand = edge
+                # print(edge, node)
+                neighbour = operator(node, operand)
+                if neighbour in visited and visited[neighbour] < len(path)+1:
+                    continue
+                new_path = path.copy()
+                new_path.append((neighbour, edge))
+                queue.append(new_path)
+                visited[neighbour] = visited[node] + 1
+                # print(visited[node], path)
+            # assert visited[node] == len(path)
 
-def parsed_solution(raw_solution):
-    return str(raw_solution)
+    return found_solutions
 
+def parsed_solution(raw_solution, operator_dict):
+    ans = str(raw_solution[0][0])
+    if len(raw_solution) <= 1:
+        return ans
+    for _, edge in raw_solution[1:-1]:
+        operator, operand = edge
+        ans = f"({ans}{operator_dict[operator]}{operand})"
+    last_edge = raw_solution[-1][1]
+    operator, operand = last_edge
+    ans = f"{ans}{operator_dict[operator]}{operand}"
 
+    return ans
 
 if __name__ == "__main__":
-    number = 6
+    user_input = ""
+    while not user_input.isdigit():
+        user_input = input("Please enter an integer >> ").strip()
+    number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = list(range(1, 6))
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
+    # allowed_numbers = [1, 2]
     print(f"Allowed to use {allowed_numbers}")
-    print(parsed_solution(minimal_solutions(number, allowed_numbers)))
+    solutions = minimal_solutions(number, allowed_numbers)
+    print(f"{len(solutions)} solutions found")
+    print(minimal_solutions(number, allowed_numbers))
