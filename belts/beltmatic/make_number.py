@@ -16,6 +16,9 @@ def div(a, b):
         return a
     return a // b
 
+def exp(a, b):
+    return a**b
+
 def divall(a, b):
     d, r = 0, 0
     if b == 0:
@@ -29,7 +32,6 @@ def divall(a, b):
 
 def divadd(a, b):
     d, r = divall(a, b)
-    
     return add(a, b)
 
 def divmult(a, b):
@@ -47,9 +49,10 @@ def divsubi(a, b):
 def minimal_solutions(target, using):
     if target in using:
         return [str(target)]
-    main_operator_dict = {add: '+', mult: '*', sub: '-', div: '/'}
+    main_operator_dict = {add: '+', mult: '*', sub: '-', div: '/', exp: '^'}
     
     div_dict = {divadd: '/+', divmult: '/*', divsub: '/-', divsubi: '/i-'}
+    div_dict = dict()
     operator_dict = {**main_operator_dict, **div_dict} 
     found_solutions = []
     queue = [[(number, (None, number))] for number in using]
@@ -57,7 +60,7 @@ def minimal_solutions(target, using):
     while queue:
         path = queue.pop(0)
         node, _ = path[-1]
-        if target in visited and visited[target] < len(path):
+        if node != target and target in visited and visited[target] < len(path):
             break
         if node in visited and visited[node] < len(path):
             break
@@ -70,6 +73,8 @@ def minimal_solutions(target, using):
             for edge in edges:
                 operator, operand = edge
                 neighbour = operator(node, operand)
+                if neighbour in {node, operand}:
+                    continue
                 if operator in div_dict and neighbour in neighbours:
                     continue
                 if neighbour in visited and visited[neighbour] < len(path)+1:
@@ -87,17 +92,21 @@ def minimal_solutions(target, using):
 def path_score(path):
     return len(set([edge[1] for _,edge in path]))
 
-def max_number_in_path(path):
-    return max([edge[1] for _,edge in path])
+def numbers_in_path(path):
+    return set([edge[1] for _,edge in path])
 
 def path_cmp(a, b):
     a_score = path_score(a)
     b_score = path_score(b)
     if a_score != b_score:
         return int(a_score > b_score)*2-1
-    max_a, max_b = max_number_in_path(a), max_number_in_path(b) 
+    a_numbers, b_numbers = numbers_in_path(a), numbers_in_path(b)
+    max_a, max_b = max(a_numbers), max(b_numbers)
     if max_a != max_b:
         return int(max_a > max_b)*2-1
+    avg_a, avg_b = sum(a_numbers)/len(a_numbers), sum(b_numbers)/len(b_numbers)
+    if avg_a != avg_b:
+        return int(avg_a > avg_b)*2-1
     a_str, b_str = str(a), str(b)
     if a_str != b_str:
         return int(a_str > b_str)*2-1
@@ -125,7 +134,7 @@ if __name__ == "__main__":
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11]
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13]
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     print(f"Allowed to use {allowed_numbers}")
     solutions = minimal_solutions(number, allowed_numbers)
