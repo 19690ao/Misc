@@ -24,7 +24,7 @@ def minimal_solutions(target, using):
         if node == target:
             if node in visited and visited[node] < len(path):
                 break
-            found_solutions.append(parsed_solution(path, operator_dict)) 
+            found_solutions.append(path) 
         else:
             edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
             for edge in edges:
@@ -36,8 +36,12 @@ def minimal_solutions(target, using):
                 new_path.append((neighbour, edge))
                 queue.append(new_path)
                 visited[neighbour] = visited[node] + 1
-
+    found_solutions.sort(key=path_score)
+    found_solutions = [parsed_solution(solution, operator_dict) for solution in found_solutions]
     return found_solutions
+
+def path_score(path):
+    return len(set([path[0][0]]+[edge[1] for _,edge in path[1:]]))
 
 def parsed_solution(raw_solution, operator_dict):
     ans = str(raw_solution[0][0])
