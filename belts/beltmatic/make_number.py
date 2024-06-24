@@ -69,4 +69,4 @@ if __name__ == "__main__":
     print(f"Allowed to use {allowed_numbers}")
     solutions = minimal_solutions(number, allowed_numbers)
     print(f"{len(solutions)} solutions found")
-    print(minimal_solutions(number, allowed_numbers))
+    print(solutions)
