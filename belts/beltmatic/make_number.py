@@ -46,15 +46,24 @@ def divsubi(a, b):
     d, r = divall(a, b)
     return sub(r, d)
 
-def minimal_solutions(target, using):
+def divexp(a, b):
+    d, r = divall(a, b)
+    return exp(d, r)
+
+def divexpi(a, b):
+    d, r = divall(a, b)
+    return exp(r, d)
+
+def minimal_solution(target, using):
     if target in using:
-        return [str(target)]
+        return str(target)
     main_operator_dict = {add: '+', mult: '*', sub: '-', div: '/', exp: '^'}
     
-    div_dict = {divadd: '/+', divmult: '/*', divsub: '/-', divsubi: '/i-'}
+    div_dict = {divadd: '/+', divmult: '/*', divsub: '/-', divsubi: '/i-',
+                divexp: '/^', divexpi: '/i^'}
     div_dict = dict()
     operator_dict = {**main_operator_dict, **div_dict} 
-    found_solutions = []
+    found_solution = None
     queue = [[(number, (None, number))] for number in using]
     visited = dict([(number, 1) for number in using])
     while queue:
@@ -64,8 +73,12 @@ def minimal_solutions(target, using):
             break
         if node in visited and visited[node] < len(path):
             break
-        if node == target:
-            found_solutions.append(path) 
+        if found_solution != None and path_cmp(found_solution, path) != 1:
+            continue
+        if node == target and \
+            (found_solution == None or \
+             (found_solution != None and path_cmp(found_solution, path) == 1)):
+                found_solution = path
         else:
             edges = [(operator, operand) for operator in main_operator_dict.keys() for operand in using]
             edges += [(operator, operand) for operator in div_dict.keys() for operand in using if (operand == 0 or node % operand != 0)]
@@ -84,10 +97,8 @@ def minimal_solutions(target, using):
                 queue.append(new_path)
                 visited[neighbour] = visited[node] + 1
                 neighbours.add(neighbour)
-    key_func = functools.cmp_to_key(path_cmp)
-    found_solutions.sort(key=key_func)
-    found_solutions = [parsed_solution(solution, operator_dict) for solution in found_solutions]
-    return found_solutions
+    found_solution = parsed_solution(found_solution, operator_dict)
+    return found_solution
 
 def path_score(path):
     return len(set([edge[1] for _,edge in path]))
@@ -96,6 +107,7 @@ def numbers_in_path(path):
     return set([edge[1] for _,edge in path])
 
 def path_cmp(a, b):
+    # Returns -1 if a<b, 0 if a=b, 1 if a>b
     a_score = path_score(a)
     b_score = path_score(b)
     if a_score != b_score:
@@ -104,9 +116,9 @@ def path_cmp(a, b):
     max_a, max_b = max(a_numbers), max(b_numbers)
     if max_a != max_b:
         return int(max_a > max_b)*2-1
-    avg_a, avg_b = sum(a_numbers)/len(a_numbers), sum(b_numbers)/len(b_numbers)
-    if avg_a != avg_b:
-        return int(avg_a > avg_b)*2-1
+    sum_a, sum_b = sum(a_numbers), sum(b_numbers)
+    if sum_a != sum_b:
+        return int(sum_a > sum_b)*2-1
     a_str, b_str = str(a), str(b)
     if a_str != b_str:
         return int(a_str > b_str)*2-1
@@ -116,6 +128,8 @@ def path_cmp(a, b):
     return 0
 
 def parsed_solution(raw_solution, operator_dict):
+    if raw_solution == None:
+        return ''
     ans = str(raw_solution[0][0])
     if len(raw_solution) <= 1:
         return ans
@@ -134,9 +148,10 @@ if __name__ == "__main__":
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13]
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14]
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     print(f"Allowed to use {allowed_numbers}")
-    solutions = minimal_solutions(number, allowed_numbers)
-    print(f"{len(solutions)} solutions found")
-    print(solutions)
+    solution = minimal_solution(number, allowed_numbers)
+    if solution != None:
+        print(f"Solution found")
+        print(solution)
