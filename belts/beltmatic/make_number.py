@@ -1,4 +1,4 @@
-import functools
+import heapq
 
 def add(a, b):
     return a+b
@@ -64,10 +64,18 @@ def minimal_solution(target, using):
     div_dict = dict()
     operator_dict = {**main_operator_dict, **div_dict} 
     found_solution = None
-    queue = [[(number, (None, number))] for number in using]
+
+    def heuristic(number):
+        return abs(target - number)
+
+    queue = [(heuristic(number), 0, [(number, (None, number))]) for number in using]
+    heapq.heapify(queue)
+    # print(queue)
+    counter = 1
     visited = dict([(number, 1) for number in using])
     while queue:
-        path = queue.pop(0)
+        _, _, path = heapq.heappop(queue)
+        # print(path)
         node, _ = path[-1]
         if node != target and target in visited and visited[target] < len(path):
             break
@@ -85,6 +93,7 @@ def minimal_solution(target, using):
             neighbours = set()
             for edge in edges:
                 operator, operand = edge
+                # print(edge)
                 neighbour = operator(node, operand)
                 if neighbour in {node, operand}:
                     continue
@@ -94,7 +103,8 @@ def minimal_solution(target, using):
                     continue
                 new_path = path.copy()
                 new_path.append((neighbour, edge))
-                queue.append(new_path)
+                heapq.heappush(queue, (heuristic(neighbour), counter, new_path))
+                counter += 1
                 visited[neighbour] = visited[node] + 1
                 neighbours.add(neighbour)
     found_solution = parsed_solution(found_solution, operator_dict)
