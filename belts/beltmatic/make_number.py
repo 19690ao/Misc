@@ -20,50 +20,10 @@ def div(a, b):
 def exp(a, b):
     return a**b
 
-def divall(a, b):
-    d, r = 0, 0
-    if b == 0:
-        d, r = 0, a
-    elif a % b != 0:
-        d, r = a // b, a % b
-    else:
-        print(a, b)
-        assert False
-    return d, r
-
-def divadd(a, b):
-    d, r = divall(a, b)
-    return add(a, b)
-
-def divmult(a, b):
-    d, r = divall(a, b)
-    return mult(a, b)
-
-def divsub(a, b):
-    d, r = divall(a, b)
-    return sub(a, b)
-
-def divsubi(a, b):
-    d, r = divall(a, b)
-    return sub(r, d)
-
-def divexp(a, b):
-    d, r = divall(a, b)
-    return exp(d, r)
-
-def divexpi(a, b):
-    d, r = divall(a, b)
-    return exp(r, d)
-
 def minimal_solution(target, using):
     if target in using:
         return str(target)
-    main_operator_dict = {add: '+', mult: '*', sub: '-', div: '/', exp: '^'}
-    
-    div_dict = {divadd: '/+', divmult: '/*', divsub: '/-', divsubi: '/i-',
-                divexp: '/^', divexpi: '/i^'}
-    div_dict = dict()
-    operator_dict = {**main_operator_dict, **div_dict} 
+    operator_dict = {add: '+', mult: '*', sub: '-', div: '/', exp: '^'}
 
     def heuristic(number):
         return abs(target - number)
@@ -84,16 +44,12 @@ def minimal_solution(target, using):
         if node == target:
             return parsed_solution(path, operator_dict)
         else:
-            edges = [(operator, operand) for operator in main_operator_dict.keys() for operand in using]
-            edges += [(operator, operand) for operator in div_dict.keys() for operand in using if (operand == 0 or node % operand != 0)]
+            edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
             neighbours = set()
             for edge in edges:
                 operator, operand = edge
-                # print(edge)
                 neighbour = operator(node, operand)
                 if neighbour in {node, operand}:
-                    continue
-                if operator in div_dict and neighbour in neighbours:
                     continue
                 if neighbour in visited and visited[neighbour] < len(path)+1:
                     continue
@@ -124,9 +80,6 @@ def path_cmp(a, b):
     a_str, b_str = str(a), str(b)
     if a_str != b_str:
         return int(a_str > b_str)*2-1
-    # print(max_number_in_path(a), a)
-    # print(max_number_in_path(b), b)
-    # print(max_number_in_path(a) < max_number_in_path(b))
     return 0
 
 def parsed_solution(raw_solution, operator_dict):
