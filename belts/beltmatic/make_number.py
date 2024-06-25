@@ -22,34 +22,42 @@ def operate(symbol, a, b):
         case _:
             return None
 
-def inverted(func, b, c):
+def invert(symbol, b, c):
     # func is the operation used to get from b to a
     # a is the target side
     # b is the operand used to get to a
     # returns the value a such that func(a, b)=c
-    pass
-    # match func:
-    #     case add:
-    #         return c - b
-    #     case mult:
-    #         if b!= 0:
-    #             return c / b
-    #         else:
-    #             return c
-    #     case sub:
-    #         return c + b
-    #     case div:
-    #         if b!= 0:
-    #             return c * b
-    #         else:
-    #             return c
-    #     case exp:
-    #         if b!= 0:
-    #             return c ** (1/b)
-    #         else:
-    #             return c
-    #     case _:
-    #         return None
+    assert b > 0 and c > 0
+    assert b==b//1 and c==c//1
+    match symbol:
+        case '+':
+            return c - b
+        case '*':
+            # If a*b=c, a=c//b IFF b!=0 and c%b=0
+            # If b==0, then a*0=c, so c==0
+            # If c%b!=0, then a is not an integer
+            if b!=0 and c%b==0:
+                return c // b
+            # c is prime
+            return c
+        case '-':
+            # If a-b=c, c+b=a IFF c+b>0
+            return c + b
+        case '/':
+            # When b=0, c=a
+            # Otherwise, if a%b!=0, c=a
+            # Else, a//b=c, so a=b*c IFF a%b==0
+            # That'd mean (b*c)%b==0, which is True since c//1=c
+            return c * b
+        case '^':
+            # If a**b==c, c^(1/b)
+            a_guess = round(c ** (1/b))
+            if a_guess**b==c:
+                return a_guess
+            # c is not a perfect power
+            return c
+        case _:
+            return None
 
 def minimal_solution(target, using):
     if target in using:
