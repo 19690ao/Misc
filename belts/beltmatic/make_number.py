@@ -8,6 +8,8 @@ def mult(a, b):
     return a*b
 
 def sub(a, b):
+    if a <= b:
+        return a
     return a-b
 
 def div(a, b):
@@ -38,17 +40,18 @@ def minimal_solution(target, using):
     queue = [queue_input([(number, (None, number))], 1) for number in using]
     heapq.heapify(queue)
     # print(queue)
-    
+
     visited = dict([(number, 1) for number in using])
     while queue:
         score, path = heapq.heappop(queue)
-        path_length, _, _,  _ = score
+        path_length, _, _, _ = score
         node, _ = path[-1]
-        if node != target and target in visited and visited[target] < len(path):
+        if node != target and target in visited and visited[target] < path_length:
             break
-        if node in visited and visited[node] < len(path):
+        if node in visited and visited[node] < path_length:
             break
         if node == target:
+            # print(parsed_solution(path, operator_dict))
             return parsed_solution(path, operator_dict)
         else:
             edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
@@ -58,22 +61,49 @@ def minimal_solution(target, using):
                 neighbour = operator(node, operand)
                 if neighbour in {node, operand}:
                     continue
-                if neighbour in visited and visited[neighbour] < len(path)+1:
+                new_path_length = path_length+1
+                if neighbour in visited and visited[neighbour] < new_path_length:
                     continue
                 new_path = path.copy()
                 new_path.append((neighbour, edge))
-                heapq.heappush(queue, queue_input(new_path, path_length+1, counter))
+                new_input = queue_input(new_path, new_path_length, counter)
+                if neighbour in visited and visited[neighbour] < new_path_length:
+                    continue
+                
+                heapq.heappush(queue, new_input)
+                visited[neighbour] = new_path_length
                 counter += 1
-                visited[neighbour] = visited[node] + 1
                 neighbours.add(neighbour)
     return None
 
-def numbers_in_path(path):
-    return set([edge[1] for _,edge in path])
+def numbers_in_path_set(path):
+    return set(numbers_in_path_list(path))
+
+def numbers_in_path_list(path):
+    return [edge[1] for _,edge in path]
+
+def concatenate_integers(numbers, maximum):
+    result = 0
+    for number in numbers:
+        # Count the number of digits in the current number
+        digits = 0
+        temp = number
+        while temp > 0:
+            temp //= maximum+1
+            digits += 1
+
+        # Shift the result to the left by the number of digits in the current number
+        result *= (maximum+1) ** digits
+
+        # Add the current number to the result
+        result += number
+
+    return result
+
 
 def path_cmp(a, b):
-    # Returns -1 if a<b, 0 if a=b, 1 if a>b\
-    a_numbers, b_numbers = numbers_in_path(a), numbers_in_path(b)
+    # Returns -1 if a<b, 0 if a=b, 1 if a>b
+    a_numbers, b_numbers = numbers_in_path_set(a), numbers_in_path_set(b)
     a_unique, b_unique = len(a_numbers), len(a_numbers)
     if a_unique != b_unique:
         return int(a_unique > b_unique)*2-1
@@ -84,9 +114,10 @@ def path_cmp(a, b):
     sum_a, sum_b = sum(a_numbers), sum(b_numbers)
     if sum_a != sum_b:
         return int(sum_a > sum_b)*2-1
-    a_str, b_str = str(a), str(b)
-    if a_str != b_str:
-        return int(a_str > b_str)*2-1
+    a_concat = concatenate_integers(numbers_in_path_list(a), max_a)
+    b_concat = concatenate_integers(numbers_in_path_list(b), max_b)
+    if a_concat != b_concat:
+        return int(a_concat > b_concat)*2-1
     return 0
 
 def parsed_solution(raw_solution, operator_dict):
