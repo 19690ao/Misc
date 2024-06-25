@@ -82,25 +82,6 @@ def numbers_in_path_set(path):
 def numbers_in_path_list(path):
     return [edge[1] for _,edge in path]
 
-def concatenate_integers(numbers, maximum):
-    result = 0
-    for number in numbers:
-        # Count the number of digits in the current number
-        digits = 0
-        temp = number
-        while temp > 0:
-            temp //= maximum+1
-            digits += 1
-
-        # Shift the result to the left by the number of digits in the current number
-        result *= (maximum+1) ** digits
-
-        # Add the current number to the result
-        result += number
-
-    return result
-
-
 def path_cmp(a, b):
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
     a_numbers, b_numbers = numbers_in_path_set(a), numbers_in_path_set(b)
@@ -114,10 +95,10 @@ def path_cmp(a, b):
     sum_a, sum_b = sum(a_numbers), sum(b_numbers)
     if sum_a != sum_b:
         return int(sum_a > sum_b)*2-1
-    a_concat = concatenate_integers(numbers_in_path_list(a), max_a)
-    b_concat = concatenate_integers(numbers_in_path_list(b), max_b)
-    if a_concat != b_concat:
-        return int(a_concat > b_concat)*2-1
+    a_list = numbers_in_path_list(a)
+    b_list = numbers_in_path_list(b)
+    if a_list != b_list:
+        return int(a_list > b_list)*2-1
     return 0
 
 def parsed_solution(raw_solution, operator_dict):
@@ -147,7 +128,7 @@ if __name__ == "__main__":
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16]
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17]
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     print(f"Allowed to use {allowed_numbers}")
     # test_div(allowed_numbers)
