@@ -1,3 +1,4 @@
+import functools
 import heapq
 
 def add(a, b):
@@ -68,14 +69,13 @@ def minimal_solution(target, using):
     def heuristic(number):
         return abs(target - number)
 
-    queue = [(heuristic(number), 0, [(number, (None, number))]) for number in using]
+    queue = [(0, heuristic(number), 0, [(number, (None, number))]) for number in using]
     heapq.heapify(queue)
     # print(queue)
     counter = 1
     visited = dict([(number, 1) for number in using])
     while queue:
-        _, _, path = heapq.heappop(queue)
-        # print(path)
+        operation_count, _,  _, path = heapq.heappop(queue)
         node, _ = path[-1]
         if node != target and target in visited and visited[target] < len(path):
             break
@@ -103,7 +103,7 @@ def minimal_solution(target, using):
                     continue
                 new_path = path.copy()
                 new_path.append((neighbour, edge))
-                heapq.heappush(queue, (heuristic(neighbour), counter, new_path))
+                heapq.heappush(queue, (operation_count+1, heuristic(neighbour), counter, new_path))
                 counter += 1
                 visited[neighbour] = visited[node] + 1
                 neighbours.add(neighbour)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14]
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15]
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     print(f"Allowed to use {allowed_numbers}")
     solution = minimal_solution(number, allowed_numbers)
