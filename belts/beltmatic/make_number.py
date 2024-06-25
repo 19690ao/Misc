@@ -27,15 +27,22 @@ def minimal_solution(target, using):
 
     def heuristic(number):
         return abs(target - number)
-
+    
+    counter = 1
     path_score = functools.cmp_to_key(path_cmp)
-    queue = [(0, heuristic(number), path_score([(number, (None, number))]), 0, [(number, (None, number))]) for number in using]
+    def queue_input(path, path_length, counter=0):
+        number = path[-1][0]
+        return ((path_length, heuristic(number), path_score(path), counter), path)
+
+    
+    queue = [queue_input([(number, (None, number))], 1) for number in using]
     heapq.heapify(queue)
     # print(queue)
-    counter = 1
+    
     visited = dict([(number, 1) for number in using])
     while queue:
-        operation_count, _, _,  _, path = heapq.heappop(queue)
+        score, path = heapq.heappop(queue)
+        path_length, _, _,  _ = score
         node, _ = path[-1]
         if node != target and target in visited and visited[target] < len(path):
             break
@@ -55,7 +62,7 @@ def minimal_solution(target, using):
                     continue
                 new_path = path.copy()
                 new_path.append((neighbour, edge))
-                heapq.heappush(queue, (operation_count+1, heuristic(neighbour), path_score(new_path), counter, new_path))
+                heapq.heappush(queue, queue_input(new_path, path_length+1, counter))
                 counter += 1
                 visited[neighbour] = visited[node] + 1
                 neighbours.add(neighbour)
@@ -97,15 +104,22 @@ def parsed_solution(raw_solution, operator_dict):
 
     return ans
 
+def test_div(allowed_numbers):
+    for i in range(1, 999):
+        solution = minimal_solution(i, allowed_numbers)
+        if '/' in solution:
+            print(f"{i}={solution}")
+
 if __name__ == "__main__":
     user_input = ""
     while not user_input.isdigit():
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15]
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16]
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     print(f"Allowed to use {allowed_numbers}")
+    # test_div(allowed_numbers)
     solution = minimal_solution(number, allowed_numbers)
     if solution != None:
         print(f"Solution found")
