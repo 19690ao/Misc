@@ -64,29 +64,25 @@ def minimal_solution(target, using):
                 divexp: '/^', divexpi: '/i^'}
     div_dict = dict()
     operator_dict = {**main_operator_dict, **div_dict} 
-    found_solution = None
 
     def heuristic(number):
         return abs(target - number)
 
-    queue = [(0, heuristic(number), 0, [(number, (None, number))]) for number in using]
+    path_score = functools.cmp_to_key(path_cmp)
+    queue = [(0, heuristic(number), path_score([(number, (None, number))]), 0, [(number, (None, number))]) for number in using]
     heapq.heapify(queue)
     # print(queue)
     counter = 1
     visited = dict([(number, 1) for number in using])
     while queue:
-        operation_count, _,  _, path = heapq.heappop(queue)
+        operation_count, _, _,  _, path = heapq.heappop(queue)
         node, _ = path[-1]
         if node != target and target in visited and visited[target] < len(path):
             break
         if node in visited and visited[node] < len(path):
             break
-        if found_solution != None and path_cmp(found_solution, path) != 1:
-            continue
-        if node == target and \
-            (found_solution == None or \
-             (found_solution != None and path_cmp(found_solution, path) == 1)):
-                found_solution = path
+        if node == target:
+            return parsed_solution(path, operator_dict)
         else:
             edges = [(operator, operand) for operator in main_operator_dict.keys() for operand in using]
             edges += [(operator, operand) for operator in div_dict.keys() for operand in using if (operand == 0 or node % operand != 0)]
@@ -103,26 +99,22 @@ def minimal_solution(target, using):
                     continue
                 new_path = path.copy()
                 new_path.append((neighbour, edge))
-                heapq.heappush(queue, (operation_count+1, heuristic(neighbour), counter, new_path))
+                heapq.heappush(queue, (operation_count+1, heuristic(neighbour), path_score(new_path), counter, new_path))
                 counter += 1
                 visited[neighbour] = visited[node] + 1
                 neighbours.add(neighbour)
-    found_solution = parsed_solution(found_solution, operator_dict)
-    return found_solution
-
-def path_score(path):
-    return len(set([edge[1] for _,edge in path]))
+    return None
 
 def numbers_in_path(path):
     return set([edge[1] for _,edge in path])
 
 def path_cmp(a, b):
-    # Returns -1 if a<b, 0 if a=b, 1 if a>b
-    a_score = path_score(a)
-    b_score = path_score(b)
-    if a_score != b_score:
-        return int(a_score > b_score)*2-1
+    # Returns -1 if a<b, 0 if a=b, 1 if a>b\
     a_numbers, b_numbers = numbers_in_path(a), numbers_in_path(b)
+    a_unique, b_unique = len(a_numbers), len(a_numbers)
+    if a_unique != b_unique:
+        return int(a_unique > b_unique)*2-1
+    
     max_a, max_b = max(a_numbers), max(b_numbers)
     if max_a != max_b:
         return int(max_a > max_b)*2-1
