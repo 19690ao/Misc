@@ -1,31 +1,60 @@
 import functools
 import heapq
 
-def add(a, b):
-    return a+b
+def operate(symbol, a, b):
+    match symbol:
+        case '+':
+            return a+b
+        case '*':
+            return a*b
+        case '-':
+            if a <= b:
+                return a
+            return a-b
+        case '/':
+            if b == 0:
+                return a
+            if a % b != 0:
+                return a
+            return a // b
+        case '^':
+            return a**b
+        case _:
+            return None
 
-def mult(a, b):
-    return a*b
-
-def sub(a, b):
-    if a <= b:
-        return a
-    return a-b
-
-def div(a, b):
-    if b == 0:
-        return a
-    if a % b != 0:
-        return a
-    return a // b
-
-def exp(a, b):
-    return a**b
+def inverted(func, b, c):
+    # func is the operation used to get from b to a
+    # a is the target side
+    # b is the operand used to get to a
+    # returns the value a such that func(a, b)=c
+    pass
+    # match func:
+    #     case add:
+    #         return c - b
+    #     case mult:
+    #         if b!= 0:
+    #             return c / b
+    #         else:
+    #             return c
+    #     case sub:
+    #         return c + b
+    #     case div:
+    #         if b!= 0:
+    #             return c * b
+    #         else:
+    #             return c
+    #     case exp:
+    #         if b!= 0:
+    #             return c ** (1/b)
+    #         else:
+    #             return c
+    #     case _:
+    #         return None
 
 def minimal_solution(target, using):
     if target in using:
         return str(target)
-    operator_dict = {add: '+', mult: '*', sub: '-', div: '/', exp: '^'}
+    operator_symbols = {'+', '*', '-', '/', '^'}
 
     def heuristic(number):
         return abs(target - number)
@@ -52,13 +81,13 @@ def minimal_solution(target, using):
             break
         if node == target:
             # print(parsed_solution(path, operator_dict))
-            return parsed_solution(path, operator_dict)
+            return parsed_solution(path)
         else:
-            edges = [(operator, operand) for operator in operator_dict.keys() for operand in using]
+            edges = [(operator, operand) for operator in operator_symbols for operand in using]
             neighbours = set()
             for edge in edges:
                 operator, operand = edge
-                neighbour = operator(node, operand)
+                neighbour = operate(operator, node, operand)
                 if neighbour in {node, operand}:
                     continue
                 new_path_length = path_length+1
@@ -101,7 +130,7 @@ def path_cmp(a, b):
         return int(a_list > b_list)*2-1
     return 0
 
-def parsed_solution(raw_solution, operator_dict):
+def parsed_solution(raw_solution):
     if raw_solution == None:
         return ''
     ans = str(raw_solution[0][0])
@@ -109,10 +138,10 @@ def parsed_solution(raw_solution, operator_dict):
         return ans
     for _, edge in raw_solution[1:-1]:
         operator, operand = edge
-        ans = f"({ans}{operator_dict[operator]}{operand})"
+        ans = f"({ans}{operator}{operand})"
     last_edge = raw_solution[-1][1]
     operator, operand = last_edge
-    ans = f"{ans}{operator_dict[operator]}{operand}"
+    ans = f"{ans}{operator}{operand}"
 
     return ans
 
