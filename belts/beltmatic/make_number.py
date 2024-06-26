@@ -146,7 +146,7 @@ def minimal_solution(target, using):
                         found_path = total_path
                         best_score = current_score
             # print("Bing")
-            return parsed_solution(found_path)
+            return found_path
         # end_dict = dict()
         # Get area around the end until next length
         new_queue_back = []
@@ -202,7 +202,7 @@ def minimal_solution(target, using):
                         best_score = current_score
             # print(best_score)
             # print("Bong")
-            return parsed_solution(found_path)
+            return found_path
         # start_dict = dict()
     return None
 
@@ -309,14 +309,26 @@ def run_tests():
     test_2()
     test_3()
 
-def main():
-    # run_tests()
+def sort_by_difficulty(allowed_numbers):
+    numbers = [5435, 8834, 5799, 37113, 37857, 43562]
+    
+    path_score = functools.cmp_to_key(path_cmp)
+    paths = [minimal_solution(number, allowed_numbers) for number in numbers]
+    numbers_paths = zip(numbers, paths)
+    scores = [path_score(path) for path in paths]
+
+    sorting_list = sorted(zip(numbers_paths, scores), key=lambda x:x[1])
+    for (number, path), _ in sorting_list:
+        print(number)
+        print(parsed_solution(path))
+    return sorting_list
+    
+def main(allowed_numbers):
     user_input = ""
     while not user_input.isdigit():
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17]
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     # allowed_numbers = [1, 2]
     print(f"Allowed to use {allowed_numbers}")
@@ -324,7 +336,10 @@ def main():
     solution = minimal_solution(number, allowed_numbers)
     if solution != None:
         print(f"Solution found")
-        print(solution)
+        print(parsed_solution(solution))
 
 if __name__ == "__main__":
-    main()
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    # run_tests()
+    # main(allowed_numbers)
+    sort_by_difficulty(allowed_numbers)
