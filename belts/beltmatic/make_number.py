@@ -1,24 +1,28 @@
 import functools
 import heapq
 
+MAX_INT = 2147483647
+MIN_INT = -2147483648
 def operate(symbol, a, b):
+    assert a > 0 and b > 0
+    assert a==a//1 and b==b//1
     match symbol:
         case '+':
-            return a+b
+            return min(MAX_INT, a+b)
         case '*':
-            return a*b
+            return min(MAX_INT, a*b)
         case '-':
             if a <= b:
                 return a
-            return a-b
+            return min(MAX_INT, a-b)
         case '/':
             if b == 0:
                 return a
             if a % b != 0:
                 return a
-            return a // b
+            return min(MAX_INT, a // b)
         case '^':
-            return a**b
+            return min(MAX_INT, a**b)
         case _:
             return None
 
@@ -27,11 +31,14 @@ def invert(symbol, b, c):
     # a is the target side
     # b is the operand used to get to a
     # returns the value a such that func(a, b)=c
+    # if a doesn't have exactly one whole number solution, return c
     assert b > 0 and c > 0
     assert b==b//1 and c==c//1
     match symbol:
         case '+':
             if c<b:
+                return c
+            if c-b>MAX_INT:
                 return c
             return c - b
         case '*':
@@ -39,22 +46,30 @@ def invert(symbol, b, c):
             # If b==0, then a*0=c, so c==0
             # If c%b!=0, then a is not an integer
             if b!=0 and c%b==0:
+                if c//b>MAX_INT:
+                    return c
                 return c // b
             # c is prime
             return c
         case '-':
             # If a-b=c, c+b=a IFF c+b>0
+            if c+b>MAX_INT:
+                return c
             return c + b
         case '/':
             # When b=0, c=a
             # Otherwise, if a%b!=0, c=a
             # Else, a//b=c, so a=b*c IFF a%b==0
             # That'd mean (b*c)%b==0, which is True since c//1=c
+            if c*b>MAX_INT:
+                return c
             return c * b
         case '^':
             # If a**b==c, c^(1/b)
             a_guess = round(c ** (1/b))
             if a_guess**b==c:
+                if a_guess>MAX_INT:
+                    return c
                 return a_guess
             # c is not a perfect power
             return c
@@ -63,7 +78,7 @@ def invert(symbol, b, c):
 
 def minimal_solution(target, using):
     if target in using:
-        return str(target)
+        return [(target, (None, target))]
     operator_symbols = {'+', '*', '-', '/', '^'}
     
     counter = 1
@@ -214,7 +229,12 @@ def numbers_in_path_list(path):
 
 def path_cmp(a, b):
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
-    # print(f"Comparing {parsed_solution(a)} vs {parsed_solution(b)}")
+    a_list = numbers_in_path_list(a)
+    b_list = numbers_in_path_list(b)
+    a_len, b_len = len(a_list), len(b_list)
+    if a_len != b_len:
+        return int(a_len > b_len)*2-1
+    
     a_numbers, b_numbers = numbers_in_path_set(a), numbers_in_path_set(b)
     a_unique, b_unique = len(a_numbers), len(b_numbers)
     if a_unique != b_unique:
@@ -226,8 +246,7 @@ def path_cmp(a, b):
     sum_a, sum_b = sum(a_numbers), sum(b_numbers)
     if sum_a != sum_b:
         return int(sum_a > sum_b)*2-1
-    a_list = numbers_in_path_list(a)
-    b_list = numbers_in_path_list(b)
+    
     if a_list != b_list:
         return int(a_list > b_list)*2-1
     return 0
@@ -235,6 +254,7 @@ def path_cmp(a, b):
 def parsed_solution(raw_solution):
     if raw_solution is None:
         return ''
+    # print(raw_solution)
     ans = str(raw_solution[0][0])
     if len(raw_solution) <= 1:
         return ans
@@ -247,11 +267,12 @@ def parsed_solution(raw_solution):
 
     return ans
 
-def test_div(allowed_numbers):
-    for i in range(1, 999):
+def test_div(allowed_numbers, last):
+    for i in range(1, last+1):
         solution = minimal_solution(i, allowed_numbers)
-        if '/' in solution:
-            print(f"{i}={solution}")
+        parsed = parsed_solution(solution)
+        if '/' in parsed:
+            print(f"{i}={parsed}")
 
 def score_tests():
     path_score = functools.cmp_to_key(path_cmp)
@@ -310,7 +331,7 @@ def run_tests():
     test_3()
 
 def sort_by_difficulty(allowed_numbers):
-    numbers = [5435, 8834, 5799, 37113, 37857, 43562]
+    numbers = [79312, 25305, 73724, 37857, 3988839]
     
     path_score = functools.cmp_to_key(path_cmp)
     paths = [minimal_solution(number, allowed_numbers) for number in numbers]
@@ -319,8 +340,10 @@ def sort_by_difficulty(allowed_numbers):
 
     sorting_list = sorted(zip(numbers_paths, scores), key=lambda x:x[1])
     for (number, path), _ in sorting_list:
+        print()
         print(number)
         print(parsed_solution(path))
+        
     return sorting_list
     
 def main(allowed_numbers):
@@ -339,7 +362,11 @@ def main(allowed_numbers):
         print(parsed_solution(solution))
 
 if __name__ == "__main__":
-    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    nonexistent = {10}
+    max_num = 29
+    allowed_numbers = [i for i in range(1, max_num+1) if i not in nonexistent]
     # run_tests()
-    # main(allowed_numbers)
-    sort_by_difficulty(allowed_numbers)
+    main(allowed_numbers)
+    # sort_by_difficulty(allowed_numbers)
+    # test_div(allowed_numbers, 2000)
+
