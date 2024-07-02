@@ -32,6 +32,9 @@ def invert(symbol, b, c):
     # b is the operand used to get to a
     # returns the value a such that func(a, b)=c
     # if a doesn't have exactly one whole number solution, return c
+    
+    # Getting from a to MAX_INT using b might me hard
+    assert c <= MAX_INT
     assert b > 0 and c > 0
     assert b==b//1 and c==c//1
     match symbol:
@@ -170,6 +173,8 @@ def minimal_solution(target, using):
             score, path = heapq.heappop(queue_back)
             path_length, _ = score
             node, _ = path[-1]
+            if node == MAX_INT:
+                print("MAX_INT Reached!")
             if node in visited:
                 end_paths.append(path)
             else:
@@ -297,32 +302,38 @@ def test_1():
     allowed_numbers = [1]
     number = 4
     result = minimal_solution(number, allowed_numbers)
-    assert result == "((1+1)+1)+1"
+    assert parsed_solution(result) == "((1+1)+1)+1"
     number = 5
     result = minimal_solution(number, allowed_numbers)
-    assert result == "(((1+1)+1)+1)+1"
+    assert parsed_solution(result) == "(((1+1)+1)+1)+1"
 
     allowed_numbers = [1, 2]
     number = 4
     result = minimal_solution(number, allowed_numbers)
-    assert result in {"2+2", "2*2", "2^2"}
+    assert parsed_solution(result) in {"2+2", "2*2", "2^2"}
 
     allowed_numbers = [1, 2, 3]
     number = 27
     result = minimal_solution(number, allowed_numbers)
-    assert result == "3^3"
+    assert parsed_solution(result) == "3^3"
 
 def test_2():
     allowed_numbers = [3, 6, 9]
     number = 18
     result = minimal_solution(number, allowed_numbers)
-    assert result == "9+9"
+    assert parsed_solution(result) == "9+9"
 
 def test_3():
     allowed_numbers = [5, 8, 17]
     number = 25
     result = minimal_solution(number, allowed_numbers)
-    assert result == "5*5"
+    assert parsed_solution(result) == "5*5"
+
+
+    allowed_numbers = [1, 2, 3, 4, 5, 8, 17, 31]
+    number = 69273666
+    result = minimal_solution(number, allowed_numbers)
+    assert parsed_solution(result) == "((31^31)-1)/31"
 
 def run_tests():
     score_tests()
@@ -331,7 +342,7 @@ def run_tests():
     test_3()
 
 def sort_by_difficulty(allowed_numbers):
-    numbers = [79312, 25305, 73724, 37857, 3988839]
+    numbers = [79312, 12279, 11058, 3988839]
     
     path_score = functools.cmp_to_key(path_cmp)
     paths = [minimal_solution(number, allowed_numbers) for number in numbers]
@@ -363,9 +374,10 @@ def main(allowed_numbers):
 
 if __name__ == "__main__":
     nonexistent = {10}
-    max_num = 29
+    max_num = 36
+    # max_num = 16
     allowed_numbers = [i for i in range(1, max_num+1) if i not in nonexistent]
-    # run_tests()
+    run_tests()
     main(allowed_numbers)
     # sort_by_difficulty(allowed_numbers)
     # test_div(allowed_numbers, 2000)
