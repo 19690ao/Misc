@@ -1,8 +1,10 @@
 import functools
 import heapq
+import math
 
 MAX_INT = 2147483647
 MIN_INT = -2147483648
+
 def operate(symbol, a, b):
     assert a > 0 and b > 0
     assert a==a//1 and b==b//1
@@ -80,22 +82,23 @@ def invert(symbol, b, c):
             return None
 
 def minimal_solution(target, using):
+    using = set(using)
     if target in using:
         return [(target, (None, target))]
     operator_symbols = {'+', '*', '-', '/', '^'}
     
     counter = 1
     path_score = functools.cmp_to_key(path_cmp)
-    def queue_input(path, path_length, counter=0):
+    def queue_input(path, cost, counter=0):
         number = path[-1][0]
-        return ((path_length, abs(target - number), path_score(path), counter), path)
+        return ((cost, abs(target - number), path_score(path), counter), path)
 
-    def queue_input_back(path, path_length, counter=0):
-        # TODO: Put a heuristic in here between counter and path_length
+    def queue_input_back(path, cost, counter=0):
+        # TODO: Put a heuristic in here between counter and cost
         # min_using = min(using)
         # max_using =
         # abs(target - number)
-        return ((path_length, counter), path)
+        return ((cost, counter), path)
 
     queue = [queue_input([(number, (None, number))], 1) for number in using]
     heapq.heapify(queue)
@@ -120,7 +123,7 @@ def minimal_solution(target, using):
         heapq.heapify(new_queue)
         while queue:
             score, path = heapq.heappop(queue)
-            path_length, _, _, _ = score
+            cost, _, _, _ = score
             node, _ = path[-1]
             if node in visited_back:
                 start_paths.append(path)
@@ -130,20 +133,20 @@ def minimal_solution(target, using):
                 for edge in edges:
                     operator, operand = edge
                     neighbor = operate(operator, node, operand)
-                    if neighbor in {node, operand}:
+                    if neighbor in {node, operand} or neighbor in using:
                         continue
-                    new_path_length = path_length+1
-                    if neighbor in visited and visited[neighbor] < new_path_length:
+                    new_cost = cost+1
+                    if neighbor in visited and visited[neighbor] < new_cost:
                         continue
                     new_path = path.copy()
                     new_path.append((neighbor, edge))
-                    new_input = queue_input(new_path, new_path_length, counter)
+                    new_input = queue_input(new_path, new_cost, counter)
                     
                     if neighbor not in start_dict:
                         start_dict[neighbor] = []
                     start_dict[neighbor].append(new_path)
                     heapq.heappush(new_queue, new_input)
-                    visited[neighbor] = new_path_length
+                    visited[neighbor] = new_cost
                     counter += 1
         queue = new_queue
         # If found, stop, mark
@@ -171,7 +174,7 @@ def minimal_solution(target, using):
         heapq.heapify(new_queue_back)
         while queue_back:
             score, path = heapq.heappop(queue_back)
-            path_length, _ = score
+            cost, _ = score
             node, _ = path[-1]
             if node == MAX_INT:
                 print("MAX_INT Reached!")
@@ -185,20 +188,20 @@ def minimal_solution(target, using):
                     neighbor = invert(operator, operand, node)
                     if neighbor in {node, operand}:
                         continue
-                    new_path_length = path_length+1
-                    if neighbor in visited_back and visited_back[neighbor] < new_path_length:
+                    new_cost = cost+1
+                    if neighbor in visited_back and visited_back[neighbor] < new_cost:
                         continue
                     new_path = path.copy()
                     # This is gonna be weird
                     new_path[-1] = (node, edge)
                     new_path.append((neighbor, None))
-                    new_input = queue_input_back(new_path, new_path_length, counter)
+                    new_input = queue_input_back(new_path, new_cost, counter)
                     
                     if neighbor not in end_dict:
                         end_dict[neighbor] = []
                     end_dict[neighbor].append(new_path)
                     heapq.heappush(new_queue_back, new_input)
-                    visited_back[neighbor] = new_path_length
+                    visited_back[neighbor] = new_cost
                     counter += 1
         queue_back = new_queue_back
         # If found, stop, mark
@@ -225,6 +228,69 @@ def minimal_solution(target, using):
             return found_path
         # start_dict = dict()
     return None
+
+def minimal_set_solution(target, using, belt_max):
+    using = set(using)
+    if target in using:
+        return [(target, (None, target))]
+    operator_symbols = {'+', '*', '-', '/', '^'}
+    # Consistent and admissable
+    # Consistent -> h(n) <= c(n,a,n')+h(n')
+    # Admissable -> h(n) <= h*(n)
+    # Consistent -> Admissable
+    def heuristic(number):
+        return abs(target - number)
+    
+    counter = 1
+    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belt_max))
+    def queue_input(path, counter=0):
+        number = path[-1][0]
+        return ((path_score(path), heuristic(number), counter), path)
+    
+    queue = [queue_input([(number, (None, number))]) for number in using]
+    heapq.heapify(queue)
+    # print(queue)
+
+    visited = dict([(number, path_score([(number, (None, number))])) for number in using])
+    while queue:
+        _, path = heapq.heappop(queue)
+        node, _ = path[-1]
+        if node == target:
+            # print(parsed_solution(path, operator_dict))
+            return path
+        else:
+            edges = [(operator, operand) for operator in operator_symbols for operand in using]
+            neighbours = set()
+            for edge in edges:
+                operator, operand = edge
+                neighbour = operate(operator, node, operand)
+                if neighbour in {node, operand} or neighbour in using:
+                    continue
+                new_path = path.copy()
+                new_path.append((neighbour, edge))
+                if max_occurence_in_path(new_path) > belt_max:
+                    continue
+                new_cost = path_score(new_path)
+                if neighbour in visited and visited[neighbour] < new_cost:
+                    continue
+                new_input = queue_input(new_path, counter)
+                heapq.heappush(queue, new_input)
+                visited[neighbour] = new_cost
+                counter += 1
+                neighbours.add(neighbour)
+    return None
+
+def max_occurence_in_path(path):
+    occurence = occurences_in_list(numbers_in_path_list(path))
+    return max(occurence.values())
+
+def occurences_in_list(numbers):
+    occurences = dict()
+    for number in numbers:
+        if number not in occurences:
+            occurences[number] = 0
+        occurences[number] += 1
+    return occurences
 
 def numbers_in_path_set(path):
     return set(numbers_in_path_list(path))
@@ -256,6 +322,16 @@ def path_cmp(a, b):
         return int(a_list > b_list)*2-1
     return 0
 
+def path_set_cmp(a, b, max_allowed=9):
+    # Returns -1 if a<b, 0 if a=b, 1 if a>b
+    occurences_a = occurences_in_list(numbers_in_path_list(a))
+    sources_a = sum([math.ceil(value/max_allowed) for value in occurences_a.values()])
+    occurences_b = occurences_in_list(numbers_in_path_list(b))
+    sources_b = sum([math.ceil(value/max_allowed) for value in occurences_b.values()])
+    if sources_a != sources_b:
+        return int(sources_a > sources_b)*2-1
+    return path_cmp(a, b)
+
 def parsed_solution(raw_solution):
     if raw_solution is None:
         return ''
@@ -263,6 +339,7 @@ def parsed_solution(raw_solution):
     ans = str(raw_solution[0][0])
     if len(raw_solution) <= 1:
         return ans
+    # print(list(raw_solution))
     for _, edge in raw_solution[1:-1]:
         operator, operand = edge
         ans = f"({ans}{operator}{operand})"
@@ -357,7 +434,7 @@ def sort_by_difficulty(allowed_numbers):
         
     return sorting_list
     
-def main(allowed_numbers):
+def main(allowed_numbers, belt_max):
     user_input = ""
     while not user_input.isdigit():
         user_input = input("Please enter an integer >> ").strip()
@@ -367,7 +444,8 @@ def main(allowed_numbers):
     # allowed_numbers = [1, 2]
     print(f"Allowed to use {allowed_numbers}")
     # test_div(allowed_numbers)
-    solution = minimal_solution(number, allowed_numbers)
+    # solution = minimal_solution(number, allowed_numbers)
+    solution = minimal_set_solution(number, allowed_numbers, belt_max)
     if solution != None:
         print(f"Solution found")
         print(parsed_solution(solution))
@@ -375,10 +453,11 @@ def main(allowed_numbers):
 if __name__ == "__main__":
     nonexistent = {10}
     max_num = 36
-    # max_num = 16
+    # If your belt_max is too high, this will take ages
+    belt_max = 9
     allowed_numbers = [i for i in range(1, max_num+1) if i not in nonexistent]
     run_tests()
-    main(allowed_numbers)
+    main(allowed_numbers, belt_max)
     # sort_by_difficulty(allowed_numbers)
     # test_div(allowed_numbers, 2000)
 
