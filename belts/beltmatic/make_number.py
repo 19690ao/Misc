@@ -1,6 +1,7 @@
 import functools
 import heapq
 import math
+import time
 
 MAX_INT = 2147483647
 MIN_INT = -2147483648
@@ -230,6 +231,8 @@ def minimal_solution(target, using):
     return None
 
 def minimal_set_solution(target, using, belt_max):
+    # print(target)
+    sorted_using = sorted(using)
     using = set(using)
     if target in using:
         return [(target, (None, target))]
@@ -252,6 +255,9 @@ def minimal_set_solution(target, using, belt_max):
     # print(queue)
 
     visited = dict([(number, path_score([(number, (None, number))])) for number in using])
+    max_using = sorted_using[-1]
+    worst_path = [(None, (None, max_using))]*(target-len(using))+list(reversed([(None, (None, i)) for i in sorted_using]))
+    worst_score = path_score(worst_path)
     while queue:
         _, path = heapq.heappop(queue)
         node, _ = path[-1]
@@ -260,24 +266,28 @@ def minimal_set_solution(target, using, belt_max):
             return path
         else:
             edges = [(operator, operand) for operator in operator_symbols for operand in using]
-            neighbours = set()
             for edge in edges:
                 operator, operand = edge
-                neighbour = operate(operator, node, operand)
-                if neighbour in {node, operand} or neighbour in using:
+                neighbor = operate(operator, node, operand)
+                if neighbor in {node, operand} or neighbor in using:
                     continue
                 new_path = path.copy()
-                new_path.append((neighbour, edge))
-                if max_occurence_in_path(new_path) > belt_max:
-                    continue
+                new_path.append((neighbor, edge))
+                # Might be necessary to make this faster
+                # if max_occurence_in_path(new_path) > belt_max:
+                #     continue
                 new_cost = path_score(new_path)
-                if neighbour in visited and visited[neighbour] < new_cost:
+                if neighbor in visited and visited[neighbor] < new_cost:
+                    continue
+                if new_cost > worst_score:
+                    print(f"{new_path}>{worst_path}")
                     continue
                 new_input = queue_input(new_path, counter)
                 heapq.heappush(queue, new_input)
-                visited[neighbour] = new_cost
+                visited[neighbor] = new_cost
                 counter += 1
-                neighbours.add(neighbour)
+    print(f"NO PATH TO {target} FOUND")
+    # This should be impossible in all cases where 1 exists
     return None
 
 def max_occurence_in_path(path):
@@ -412,15 +422,23 @@ def test_3():
     result = minimal_solution(number, allowed_numbers)
     assert parsed_solution(result) == "((31^31)-1)/31"
 
+def test_set_1():
+    allowed_numbers = [1, 2]
+    number = 5
+    result = minimal_set_solution(number, allowed_numbers, 2)
+    assert result != None
+    # print(parsed_solution(result))
+    assert parsed_solution(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
+
 def run_tests():
     score_tests()
     test_1()
     test_2()
     test_3()
 
-def sort_by_difficulty(allowed_numbers):
-    numbers = [79312, 12279, 11058, 3988839]
-    
+    test_set_1()
+
+def sort_by_difficulty(numbers, allowed_numbers):    
     path_score = functools.cmp_to_key(path_cmp)
     paths = [minimal_solution(number, allowed_numbers) for number in numbers]
     numbers_paths = zip(numbers, paths)
@@ -433,7 +451,22 @@ def sort_by_difficulty(allowed_numbers):
         print(parsed_solution(path))
         
     return sorting_list
-    
+
+def sort_by_set_difficulty(numbers, allowed_numbers, belt_max):
+    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belt_max))
+    paths = [minimal_set_solution(number, allowed_numbers, belt_max) for number in numbers]
+    numbers_paths = zip(numbers, paths)
+    scores = [path_score(path) for path in paths]
+    print(paths)
+    sorting_list = sorted(zip(numbers_paths, scores), key=lambda x:x[1])
+    for (number, path), _ in sorting_list:
+        print()
+        print(number)
+        print(parsed_solution(path))
+    print([parsed_solution(path) for path in paths])
+    print([number for (number, _), _ in sorting_list])
+    return sorting_list
+
 def main(allowed_numbers, belt_max):
     user_input = ""
     while not user_input.isdigit():
@@ -445,19 +478,26 @@ def main(allowed_numbers, belt_max):
     print(f"Allowed to use {allowed_numbers}")
     # test_div(allowed_numbers)
     # solution = minimal_solution(number, allowed_numbers)
+    t0 = time.time()
     solution = minimal_set_solution(number, allowed_numbers, belt_max)
+    t1 = time.time()
+    print(f"Calculation took {round(t1-t0, 3)} seconds")
     if solution != None:
         print(f"Solution found")
         print(parsed_solution(solution))
 
 if __name__ == "__main__":
     nonexistent = {10}
-    max_num = 36
-    # If your belt_max is too high, this will take ages
-    belt_max = 9
-    allowed_numbers = [i for i in range(1, max_num+1) if i not in nonexistent]
+    max_num = 37
+    max_num = 2
+    # If your belt_max is too high, this will take ages (ex. 1+1+1+1+1...)
+    belt_max = float('inf')
+    allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
+    numbers = [79312, 12279, 11058, 3988839]
+    numbers = [i+1 for i in range(0, 100) if i+1 not in allowed_numbers]
+    print(numbers, allowed_numbers)
     run_tests()
-    main(allowed_numbers, belt_max)
-    # sort_by_difficulty(allowed_numbers)
+    # main(allowed_numbers, belt_max)
+    # sort_by_difficulty(numbers, allowed_numbers)
+    sort_by_set_difficulty(numbers, allowed_numbers, belt_max)
     # test_div(allowed_numbers, 2000)
-
