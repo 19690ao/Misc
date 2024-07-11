@@ -6,12 +6,72 @@ from collections import defaultdict
 
 MAX_INT = 2147483647
 MIN_INT = -2147483648
+
 class DynamicDefaultDict(defaultdict):
     def __missing__(self, key):
         if self.default_factory is None:
             raise KeyError(key)
         self[key] = self.default_factory(key)
         return self[key]
+
+class ExpressionPath(list):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.calculated_sum = None
+        self.occurences = None
+    
+    def operand_occurences(self) -> defaultdict:
+        if self.occurences is None:
+            self.occurences = defaultdict(lambda: 0)
+            for operand in self.operand_list():
+                assert isinstance(operand, int)
+                self.occurences[operand] += 1
+        return self.occurences
+
+    def sum(self):
+        if self.calculated_sum is None:
+            self.calculated_sum = sum(operand*occurence_number for operand, occurence_number in self.operand_occurences().items())
+        return self.calculated_sum
+
+    def append(self, item):
+        # print(self, item)
+        operand = item[1][1]
+        self.calculated_sum = self.sum() + operand
+        self.occurences[operand] += 1
+        return super().append(item)
+        
+    def copy(self):
+        copied = ExpressionPath(self)
+        copied.calculated_sum = self.calculated_sum
+        if self.occurences is not None:
+            copied.occurences = self.occurences.copy()
+        return copied
+
+    def __str__(self):
+        ans = str(self[0][0])
+        if len(self) <= 1:
+            return ans
+        # print(list(raw_solution))
+        for _, edge in self[1:-1]:
+            operator, operand = edge
+            ans = f"({ans}{operator}{operand})"
+        last_edge = self[-1][1]
+        operator, operand = last_edge
+        ans = f"{ans}{operator}{operand}"
+        return ans
+
+    def max_occurence(self):
+        return max(self.operand_occurences.values())
+
+    def operand_set(self):
+        return set(self.operand_list())
+
+    def operand_list(self):
+        return [edge[1] for _,edge in self]
+
+    def operator_list(self):
+        # print(path)
+        return [edge[0] for _,edge in self[1:]]
 
 def operate(symbol, a, b):
     assert a > 0 and b > 0
@@ -89,7 +149,7 @@ def invert(symbol, b, c):
         case _:
             return None
 
-def minimal_solution(target, using):
+def minimal_solution(target: int, using: list) -> ExpressionPath:
     using = set(using)
     if target in using:
         return [(target, (None, target))]
@@ -175,7 +235,7 @@ def minimal_solution(target, using):
                         found_path = total_path
                         best_score = current_score
             # print("Bing")
-            return found_path
+            return ExpressionPath(found_path)
         # end_dict = dict()
         # Get area around the end until next length
         new_queue_back = []
@@ -226,19 +286,17 @@ def minimal_solution(target, using):
                 assert middle in start_dict
                 for start_path in start_dict[middle]:
                     total_path = start_path+end_path[1:]
-                    # print(parsed_solution(total_path))
+                    # print(str(total_path))
                     current_score = path_score(total_path)
                     if best_score is None or best_score > current_score:
                         found_path = total_path
                         best_score = current_score
             # print(best_score)
             # print("Bong")
-            return found_path
+            return ExpressionPath(found_path)
         # start_dict = dict()
     print(f"NO PATH TO {target} FOUND")
     return None
-
-
 
 def minimal_set_solution(target, using, belts_per_souce):
     print(f"Finding {target}")
@@ -262,7 +320,7 @@ def minimal_set_solution(target, using, belts_per_souce):
         number = path[-1][0]
         return ((path_score(path), heuristic(number), counter), path)
     
-    queue = [queue_input([(number, (None, number))]) for number in using]
+    queue = [queue_input(ExpressionPath([(number, (None, number))])) for number in using]
     heapq.heapify(queue)
     # print(queue)
 
@@ -279,17 +337,24 @@ def minimal_set_solution(target, using, belts_per_souce):
     print("Finding largest divisor")
     largest_used_divisor = next((num for num in reversed(sorted_using) if target % num == 0), 1)
     print("Finding worst path")
-    worst_path = [((i+1)*largest_used_divisor, ('+', largest_used_divisor)) for i in range(target//largest_used_divisor)]
+    # path_t0 = time.time()
+    # ((i+1)*largest_used_divisor, ('+', largest_used_divisor))
+    edge = ('+', largest_used_divisor)
+    # temp = [((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)]
+    # path_t1 = time.time()
+    # print(f"Takes {round(path_t1-path_t0, 2)}s")
+    worst_path = ExpressionPath([((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)])
     print("Finding worst score")
     worst_score = path_score(worst_path)
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
-        print(f"{parsed_solution(path)}={node}")
+        print(f"{str(path)}={node}")
         if node == target:
-            # print(parsed_solution(path, operator_dict))
+            # print(str(path, operator_dict))
             return path
         else:
+            # edges_t0 = time.time()
             edges = [(operator, operand) for operator in operator_symbols for operand in using]
             for edge in edges:
                 operator, operand = edge
@@ -322,7 +387,7 @@ def minimal_set_solution(target, using, belts_per_souce):
                 if new_cost > worst_score:
                     # print(f"{new_path} worse than {worst_path}")
                     continue
-                # print(f"{parsed_solution(new_path)}={neighbor}")
+                # print(f"{str(new_path)}={neighbor}")
                 new_visit_cost = sources_in_path(new_path, belts_per_souce)
                 if visited[neighbor] < new_visit_cost:
                     continue
@@ -331,41 +396,45 @@ def minimal_set_solution(target, using, belts_per_souce):
                 heapq.heappush(queue, new_input)
                 visited[neighbor] = new_visit_cost
                 counter += 1
+            # edges_t1 = time.time()
+            # assert edges_t1-edges_t0 < 0.3
     print(f"NO PATH TO {target} FOUND")
     # This should be impossible in all cases where 1 exists
     return worst_path
 
-def max_occurence_in_path(path):
-    occurence = occurences_in_list(numbers_in_path_list(path))
-    return max(occurence.values())
+# def max_occurence_in_path(path):
+#     occurence = occurences_in_list(numbers_in_path_list(path))
+#     return max(occurence.values())
 
-def occurences_in_list(numbers):
-    occurences = dict()
-    for number in numbers:
-        if number not in occurences:
-            occurences[number] = 0
-        occurences[number] += 1
-    return occurences
+# def occurences_in_list(numbers):
+#     occurences = defaultdict(lambda: 0)
+#     for number in numbers:
+#         occurences[number] += 1
+#     return occurences
 
-def numbers_in_path_set(path):
-    return set(numbers_in_path_list(path))
+# def numbers_in_path_set(path):
+#     return set(numbers_in_path_list(path))
 
-def numbers_in_path_list(path):
-    return [edge[1] for _,edge in path]
+# def numbers_in_path_list(path):
+#     return [edge[1] for _,edge in path]
 
-def operators_in_path_list(path):
-    # print(path)
-    return [edge[0] for _,edge in path[1:]]
+# def operators_in_path_list(path):
+#     # print(path)
+#     return [edge[0] for _,edge in path[1:]]
 
-def path_cmp(a, b):
+def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
-    a_list = numbers_in_path_list(a)
-    b_list = numbers_in_path_list(b)
+    if not isinstance(a, ExpressionPath):
+        a = ExpressionPath(a)
+    if not isinstance(b, ExpressionPath):
+        b = ExpressionPath(b)
+    a_list = a.operand_list()
+    b_list = b.operand_list()
     a_len, b_len = len(a_list), len(b_list)
     if a_len != b_len:
         return int(a_len > b_len)*2-1
     
-    a_numbers, b_numbers = numbers_in_path_set(a), numbers_in_path_set(b)
+    a_numbers, b_numbers = a.operand_set(), b.operand_set()
     a_unique, b_unique = len(a_numbers), len(b_numbers)
     if a_unique != b_unique:
         return int(a_unique > b_unique)*2-1
@@ -381,16 +450,21 @@ def path_cmp(a, b):
         return int(a_list > b_list)*2-1
     
     operator_dict = {'':0, '+':1, '*':2, '-':3, '/':4, '^':5}
-    operator_vals_a = [operator_dict[operator] for operator in operators_in_path_list(a)]
-    operator_vals_b = [operator_dict[operator] for operator in operators_in_path_list(b)]
+    operator_vals_a = [operator_dict[operator] for operator in a.operator_list()]
+    operator_vals_b = [operator_dict[operator] for operator in b.operator_list()]
 
     if operator_vals_a != operator_vals_b:
         return int(operator_vals_a > operator_vals_b)*2-1
     return 0
 
-def sources_in_path(path, belts_per_souce):
-    occurences = occurences_in_list(numbers_in_path_list(path))
-    return sum([math.ceil(value/belts_per_souce) for value in occurences.values()])
+def sources_in_path(path: ExpressionPath, belts_per_souce: int) -> int:
+    occurences = path.operand_occurences()
+    t0 = time.time()
+    result = sum([math.ceil(value/belts_per_souce) for value in occurences.values()])
+    t1 = time.time()
+    # print(f"Sum took {round(t1-t0, 3)}s")
+    assert t1-t0<1
+    return result
 
 def path_set_cmp(a, b, belts_per_souce=9):
     # t1 = tuple([(1, (None, 1)), (2, ('+', 1)), (3, ('+', 1))])
@@ -424,7 +498,7 @@ def parsed_solution(raw_solution):
 def test_div(allowed_numbers, last):
     for i in range(1, last+1):
         solution = minimal_solution(i, allowed_numbers)
-        parsed = parsed_solution(solution)
+        parsed = str(solution)
         if '/' in parsed:
             print(f"{i}={parsed}")
 
@@ -433,84 +507,124 @@ def score_tests():
 
     path_a = [(1, (None, 1))]
     path_b = [(1, (None, 1)), (1, ('*', 1))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
     assert path_score(path_a) < path_score(path_b)
 
     path_a = [(2, (None, 2)), (6, ("*", 3))]
     path_b = [(2, (None, 1)), (6, ("+", 4))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
     assert path_score(path_a) < path_score(path_b)
 
     path_a = [(5, (None, 5)), (25, ('*', 5))]
     path_b = [(17, (None, 17)), (25, ('+', 8))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
     assert path_score(path_a) < path_score(path_b)
 
     path_a = [(9, (None, 9)), (18, ('+', 9))]
     path_b = [(3, (None, 3)), (18, ('*', 6))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
     assert path_score(path_a) < path_score(path_b)
 
     path_a = [(2, (None, 2)), (4, ('+', 2)), (6, ('+', 2))]
     path_b = [(2, (None, 2)), (4, ('+', 2)), (8, ('*', 2))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
     assert path_score(path_a) < path_score(path_b)
 
     path_a = [(2, (None, 2)), (4, ('+', 2)), (8, ('*', 2))]
     path_b = [(2, (None, 2)), (4, ('+', 2)), (16, ('^', 2))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
+    assert path_score(path_a) < path_score(path_b)
+
+def score_set_tests():
+    path_score = functools.cmp_to_key(path_set_cmp)
+
+    path_a = [(1, (None, 1))]
+    path_b = [(1, (None, 1)), (1, ('*', 1))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
+    assert path_score(path_a) < path_score(path_b)
+
+    path_a = [(2, (None, 2)), (6, ("*", 3))]
+    path_b = [(2, (None, 1)), (6, ("+", 4))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
+    assert path_score(path_a) < path_score(path_b)
+
+    path_a = [(5, (None, 5)), (25, ('*', 5))]
+    path_b = [(17, (None, 17)), (25, ('+', 8))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
+    assert path_score(path_a) < path_score(path_b)
+
+    path_a = [(9, (None, 9)), (18, ('+', 9))]
+    path_b = [(3, (None, 3)), (18, ('*', 6))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
+    assert path_score(path_a) < path_score(path_b)
+
+    path_a = [(2, (None, 2)), (4, ('+', 2)), (6, ('+', 2))]
+    path_b = [(2, (None, 2)), (4, ('+', 2)), (8, ('*', 2))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
+    assert path_score(path_a) < path_score(path_b)
+
+    path_a = [(2, (None, 2)), (4, ('+', 2)), (8, ('*', 2))]
+    path_b = [(2, (None, 2)), (4, ('+', 2)), (16, ('^', 2))]
+    path_a, path_b = ExpressionPath(path_a), ExpressionPath(path_b)
     assert path_score(path_a) < path_score(path_b)
 
 def test_1():
     allowed_numbers = [1]
     number = 4
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) == "((1+1)+1)+1"
+    assert str(result) == "((1+1)+1)+1"
     number = 5
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) == "(((1+1)+1)+1)+1"
+    assert str(result) == "(((1+1)+1)+1)+1"
 
     allowed_numbers = [1, 2]
     number = 4
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) in {"2+2", "2*2", "2^2"}
+    assert str(result) in {"2+2", "2*2", "2^2"}
 
     allowed_numbers = [1, 2, 3]
     number = 27
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) == "3^3"
+    assert str(result) == "3^3"
 
 def test_2():
     allowed_numbers = [3, 6, 9]
     number = 18
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) == "9+9"
+    assert str(result) == "9+9"
 
 def test_3():
     allowed_numbers = [5, 8, 17]
     number = 25
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) == "5*5"
+    assert str(result) == "5*5"
 
 
     allowed_numbers = [1, 2, 3, 4, 5, 8, 17, 31]
     number = 69273666
     result = minimal_solution(number, allowed_numbers)
-    assert parsed_solution(result) == "((31^31)-1)/31"
+    assert str(result) == "((31^31)-1)/31"
 
 def test_set_1():
     allowed_numbers = [1, 2]
     number = 5
     result = minimal_set_solution(number, allowed_numbers, 2)
     assert result != None
-    # print(parsed_solution(result))
-    assert parsed_solution(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
+    # print(str(result))
+    assert str(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
 
     number = 7
     result = minimal_set_solution(number, allowed_numbers, 100)
     assert result != None
-    # print(parsed_solution(result))
-    assert parsed_solution(result) in {"(((2+2)^2)-2)/2"}
+    # print(str(result))
+    print(result)
+    assert str(result) in {"(((2+2)^2)-2)/2"}
 
     number = 3
     result = minimal_set_solution(number, allowed_numbers, 100)
     assert result != None
-    # print(parsed_solution(result))
-    assert parsed_solution(result) in {"(1+1)+1"}
+    # print(str(result))
+    assert str(result) in {"(1+1)+1"}
 
 def run_tests():
     score_tests()
@@ -530,7 +644,7 @@ def sort_by_difficulty(numbers, allowed_numbers):
     for (number, path), _ in sorting_list:
         print()
         print(number)
-        print(parsed_solution(path))
+        print(path)
         
     return sorting_list
 
@@ -544,10 +658,10 @@ def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_souce):
     for (number, path), _ in sorting_list:
         print()
         print(number)
-        print(parsed_solution(path))
-    print([(i+1,parsed_solution(path)) for i,path in enumerate(paths)])
-    # print([(i+1,parsed_solution(path)) for i,path in enumerate(paths) if not ('*' in parsed_solution(path) or '-' in parsed_solution(path) or '/' in parsed_solution(path) or '^' in parsed_solution(path))])
-    # print([i+1 for i,path in enumerate(paths) if ('*' in parsed_solution(path))])
+        print(path)
+    print([(i+1,str(path)) for i,path in enumerate(paths)])
+    # print([(i+1,str(path)) for i,path in enumerate(paths) if not ('*' in str(path) or '-' in str(path) or '/' in str(path) or '^' in str(path))])
+    # print([i+1 for i,path in enumerate(paths) if ('*' in str(path))])
     print([i+1 for i,path in enumerate(paths) if (len(path)==1 or '+' not in operators_in_path_list(path[2:]))])
     print([len(path) for path in paths])
     print([number for (number, _), _ in sorting_list])
@@ -571,7 +685,7 @@ def main(allowed_numbers, belts_per_souce):
     print(f"Calculation took {round(t1-t0, 3)} seconds")
     if solution != None:
         print(f"Solution found")
-        print(parsed_solution(solution))
+        print(str(solution))
 
 def replace_base(lst, base) -> int:
     step = 0
