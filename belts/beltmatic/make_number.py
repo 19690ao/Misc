@@ -34,15 +34,15 @@ class ExpressionPath(list):
         assert self.belts_per_source != None
         if self.calculated_sources is None:
             occurences = self.operand_occurences()
-            t0 = time.time()
+            # t0 = time.time()
             self.calculated_sources = sum([math.ceil(value/self.belts_per_source) for value in occurences.values()])
             # print([math.ceil(value/belts_per_source) for value in occurences.values()])
             # print([occurences.values()])
             # print(f"{self} has {self.calculated_sources} source(s) now")
             # if len(self) > 1: assert False
-            t1 = time.time()
+            # t1 = time.time()
             # print(f"Sum took {round(t1-t0, 3)}s")
-            assert t1-t0<1
+            # assert t1-t0<1
         return self.calculated_sources
 
     def sum(self):
@@ -684,7 +684,7 @@ def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source):
     print([(i+1,str(path)) for i,path in enumerate(paths)])
     # print([(i+1,str(path)) for i,path in enumerate(paths) if not ('*' in str(path) or '-' in str(path) or '/' in str(path) or '^' in str(path))])
     # print([i+1 for i,path in enumerate(paths) if ('*' in str(path))])
-    print([i+1 for i,path in enumerate(paths) if (len(path)==1 or '+' not in operators_in_path_list(path[2:]))])
+    # print([i+1 for i,path in enumerate(paths) if (len(path)==1 or '+' not in operators_in_path_list(path[2:]))])
     print([len(path) for path in paths])
     print([number for (number, _), _ in sorting_list])
     return sorting_list
@@ -722,7 +722,7 @@ if __name__ == "__main__":
     max_num = 37
     # max_num = 2
     # If your belts_per_source is too high, this will take ages (ex. 1+1+1+1+1...)
-    belts_per_source = 10
+    belts_per_source = 7
     # belts_per_source = 100000
     allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
     numbers = [79312, 12279, 11058, 3988839]
