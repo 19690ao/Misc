@@ -15,10 +15,12 @@ class DynamicDefaultDict(defaultdict):
         return self[key]
 
 class ExpressionPath(list):
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, lst, belts_per_source=None):
+        super().__init__(lst)
         self.calculated_sum = None
         self.occurences = None
+        self.calculated_sources = None
+        self.belts_per_source = belts_per_source
     
     def operand_occurences(self) -> defaultdict:
         if self.occurences is None:
@@ -27,6 +29,21 @@ class ExpressionPath(list):
                 assert isinstance(operand, int)
                 self.occurences[operand] += 1
         return self.occurences
+
+    def sources(self):
+        assert self.belts_per_source != None
+        if self.calculated_sources is None:
+            occurences = self.operand_occurences()
+            t0 = time.time()
+            self.calculated_sources = sum([math.ceil(value/self.belts_per_source) for value in occurences.values()])
+            # print([math.ceil(value/belts_per_source) for value in occurences.values()])
+            # print([occurences.values()])
+            # print(f"{self} has {self.calculated_sources} source(s) now")
+            # if len(self) > 1: assert False
+            t1 = time.time()
+            # print(f"Sum took {round(t1-t0, 3)}s")
+            assert t1-t0<1
+        return self.calculated_sources
 
     def sum(self):
         if self.calculated_sum is None:
@@ -38,11 +55,14 @@ class ExpressionPath(list):
         operand = item[1][1]
         self.calculated_sum = self.sum() + operand
         self.occurences[operand] += 1
+        if self.occurences[operand]%self.belts_per_source==1:
+            self.calculated_sources += 1
         return super().append(item)
         
     def copy(self):
-        copied = ExpressionPath(self)
+        copied = ExpressionPath(self, self.belts_per_source)
         copied.calculated_sum = self.calculated_sum
+        copied.calculated_sources = self.calculated_sources
         if self.occurences is not None:
             copied.occurences = self.occurences.copy()
         return copied
@@ -298,7 +318,7 @@ def minimal_solution(target: int, using: list) -> ExpressionPath:
     print(f"NO PATH TO {target} FOUND")
     return None
 
-def minimal_set_solution(target, using, belts_per_souce):
+def minimal_set_solution(target, using, belts_per_source):
     print(f"Finding {target}")
     sorted_using = sorted(using)
     min_using = sorted_using[0]
@@ -315,12 +335,12 @@ def minimal_set_solution(target, using, belts_per_souce):
         return abs(target - number)
     
     counter = 1
-    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belts_per_souce))
+    path_score = functools.cmp_to_key(path_set_cmp)
     def queue_input(path, counter=0):
         number = path[-1][0]
         return ((path_score(path), heuristic(number), counter), path)
     
-    queue = [queue_input(ExpressionPath([(number, (None, number))])) for number in using]
+    queue = [queue_input(ExpressionPath([(number, (None, number))], belts_per_source=belts_per_source)) for number in using]
     heapq.heapify(queue)
     # print(queue)
 
@@ -329,10 +349,10 @@ def minimal_set_solution(target, using, belts_per_souce):
         largest_used_divisor = next((num for num in reversed(sorted_using) if total % num == 0), 1)
         belts = round(total/largest_used_divisor)
         # belts = total
-        return math.ceil(belts/belts_per_souce)
+        return math.ceil(belts/belts_per_source)
     visited = DynamicDefaultDict(lambda x: upper_bound(x))
     # occurences = occurences_in_list(numbers_in_path_list(path))
-    # sources = sum([math.ceil(value/belts_per_souce) for value in occurences.values()])
+    # sources = sum([math.ceil(value/belts_per_source) for value in occurences.values()])
     assert upper_bound(5)==visited[5]
     print("Finding largest divisor")
     largest_used_divisor = next((num for num in reversed(sorted_using) if target % num == 0), 1)
@@ -343,7 +363,7 @@ def minimal_set_solution(target, using, belts_per_souce):
     # temp = [((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)]
     # path_t1 = time.time()
     # print(f"Takes {round(path_t1-path_t0, 2)}s")
-    worst_path = ExpressionPath([((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)])
+    worst_path = ExpressionPath([((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)], belts_per_source)
     print("Finding worst score")
     worst_score = path_score(worst_path)
     while queue:
@@ -369,15 +389,15 @@ def minimal_set_solution(target, using, belts_per_souce):
                     continue
                 new_length = len(path)+1
                 if '/' in operator_symbols and new_length>neighbor+1:
-                    # Making x is as easy as (n*x)/n, even with small belts_per_souce
-                    # Ex. belts_per_souce=1, (2*1000)/2 gets 1000, 
+                    # Making x is as easy as (n*x)/n, even with small belts_per_source
+                    # Ex. belts_per_source=1, (2*1000)/2 gets 1000, 
                     continue
                 if '^' in operator_symbols and neighbor == MAX_INT and new_length>=math.ceil(math.log(max_using, MAX_INT)):
                     continue
                 new_path = path.copy()
                 new_path.append((neighbor, edge))
                 # Might be necessary to make this faster
-                # if max_occurence_in_path(new_path) > belts_per_souce:
+                # if max_occurence_in_path(new_path) > belts_per_source:
                 #     continue
                 
                 
@@ -388,7 +408,7 @@ def minimal_set_solution(target, using, belts_per_souce):
                     # print(f"{new_path} worse than {worst_path}")
                     continue
                 # print(f"{str(new_path)}={neighbor}")
-                new_visit_cost = sources_in_path(new_path, belts_per_souce)
+                new_visit_cost = sources_in_path(new_path, belts_per_source)
                 if visited[neighbor] < new_visit_cost:
                     continue
                 
@@ -457,23 +477,24 @@ def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
         return int(operator_vals_a > operator_vals_b)*2-1
     return 0
 
-def sources_in_path(path: ExpressionPath, belts_per_souce: int) -> int:
-    occurences = path.operand_occurences()
-    t0 = time.time()
-    result = sum([math.ceil(value/belts_per_souce) for value in occurences.values()])
-    t1 = time.time()
-    # print(f"Sum took {round(t1-t0, 3)}s")
-    assert t1-t0<1
+def sources_in_path(path: ExpressionPath, belts_per_source: int) -> int:
+    # occurences = path.operand_occurences()
+    # t0 = time.time()
+    # result = sum([math.ceil(value/belts_per_source) for value in occurences.values()])
+    # t1 = time.time()
+    # # print(f"Sum took {round(t1-t0, 3)}s")
+    # assert t1-t0<1
+    result = path.sources()
     return result
 
-def path_set_cmp(a, b, belts_per_souce=9):
+def path_set_cmp(a: ExpressionPath, b: ExpressionPath):
     # t1 = tuple([(1, (None, 1)), (2, ('+', 1)), (3, ('+', 1))])
     # t2 = tuple([(2, (None, 2)), (4, ('+', 2)), (6, ('+', 2))])
     # if (t1 in {tuple(a), tuple(b)} and t2 in {tuple(a), tuple(b)}):
     #     print("Let's see this")
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
-    sources_a = sources_in_path(a, belts_per_souce)
-    sources_b = sources_in_path(b, belts_per_souce)
+    sources_a = a.sources()
+    sources_b = b.sources()
     if sources_a != sources_b:
         return int(sources_a > sources_b)*2-1
     return path_cmp(a, b)
@@ -610,20 +631,21 @@ def test_set_1():
     number = 5
     result = minimal_set_solution(number, allowed_numbers, 2)
     assert result != None
-    # print(str(result))
-    assert str(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
+    print(result)
+    assert str(result) in {"(1+2)+2"}
+    # assert str(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
 
     number = 7
     result = minimal_set_solution(number, allowed_numbers, 100)
     assert result != None
-    # print(str(result))
+    # print(result)
     print(result)
     assert str(result) in {"(((2+2)^2)-2)/2"}
 
     number = 3
     result = minimal_set_solution(number, allowed_numbers, 100)
     assert result != None
-    # print(str(result))
+    # print(result)
     assert str(result) in {"(1+1)+1"}
 
 def run_tests():
@@ -648,9 +670,9 @@ def sort_by_difficulty(numbers, allowed_numbers):
         
     return sorting_list
 
-def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_souce):
-    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belts_per_souce))
-    paths = [minimal_set_solution(number, allowed_numbers, belts_per_souce) for number in numbers]
+def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source):
+    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belts_per_source))
+    paths = [minimal_set_solution(number, allowed_numbers, belts_per_source) for number in numbers]
     numbers_paths = zip(numbers, paths)
     scores = [path_score(path) for path in paths]
     # print(paths)
@@ -667,7 +689,7 @@ def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_souce):
     print([number for (number, _), _ in sorting_list])
     return sorting_list
 
-def main(allowed_numbers, belts_per_souce):
+def main(allowed_numbers, belts_per_source):
     user_input = ""
     while not user_input.isdigit():
         user_input = input("Please enter an integer >> ").strip()
@@ -680,7 +702,7 @@ def main(allowed_numbers, belts_per_souce):
     # test_div(allowed_numbers)
     # solution = minimal_solution(number, allowed_numbers)
     t0 = time.time()
-    solution = minimal_set_solution(number, allowed_numbers, belts_per_souce)
+    solution = minimal_set_solution(number, allowed_numbers, belts_per_source)
     t1 = time.time()
     print(f"Calculation took {round(t1-t0, 3)} seconds")
     if solution != None:
@@ -699,15 +721,15 @@ if __name__ == "__main__":
     nonexistent = {10}
     max_num = 37
     # max_num = 2
-    # If your belts_per_souce is too high, this will take ages (ex. 1+1+1+1+1...)
-    belts_per_souce = 10
-    # belts_per_souce = 100000
+    # If your belts_per_source is too high, this will take ages (ex. 1+1+1+1+1...)
+    belts_per_source = 10
+    # belts_per_source = 100000
     allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
     numbers = [79312, 12279, 11058, 3988839]
     numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
     # print(numbers, allowed_numbers)
     run_tests()
-    main(allowed_numbers, belts_per_souce)
+    main(allowed_numbers, belts_per_source)
     # sort_by_difficulty(numbers, allowed_numbers)
-    # sort_by_set_difficulty(numbers, allowed_numbers, belts_per_souce)
+    # sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
     # test_div(allowed_numbers, 2000)
