@@ -2,9 +2,16 @@ import functools
 import heapq
 import math
 import time
+from collections import defaultdict
 
 MAX_INT = 2147483647
 MIN_INT = -2147483648
+class DynamicDefaultDict(defaultdict):
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        self[key] = self.default_factory(key)
+        return self[key]
 
 def operate(symbol, a, b):
     assert a > 0 and b > 0
@@ -228,15 +235,20 @@ def minimal_solution(target, using):
             # print("Bong")
             return found_path
         # start_dict = dict()
+    print(f"NO PATH TO {target} FOUND")
     return None
 
-def minimal_set_solution(target, using, belt_max):
-    # print(target)
+
+
+def minimal_set_solution(target, using, belts_per_souce):
+    print(f"Finding {target}")
     sorted_using = sorted(using)
+    min_using = sorted_using[0]
+    max_using = sorted_using[-1]
     using = set(using)
-    if target in using:
-        return [(target, (None, target))]
-    operator_symbols = {'+', '*', '-', '/', '^'}
+    # if target in using:
+    #     return [(target, (None, target))]
+    operator_symbols = ['+', '*', '-', '/', '^']
     # Consistent and admissable
     # Consistent -> h(n) <= c(n,a,n')+h(n')
     # Admissable -> h(n) <= h*(n)
@@ -245,7 +257,7 @@ def minimal_set_solution(target, using, belt_max):
         return abs(target - number)
     
     counter = 1
-    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belt_max))
+    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belts_per_souce))
     def queue_input(path, counter=0):
         number = path[-1][0]
         return ((path_score(path), heuristic(number), counter), path)
@@ -254,13 +266,26 @@ def minimal_set_solution(target, using, belt_max):
     heapq.heapify(queue)
     # print(queue)
 
-    visited = dict([(number, path_score([(number, (None, number))])) for number in using])
-    max_using = sorted_using[-1]
-    worst_path = [(None, (None, max_using))]*(target-len(using))+list(reversed([(None, (None, i)) for i in sorted_using]))
+    # Set the default function (UPPER BOUND)
+    def upper_bound(total):
+        largest_used_divisor = next((num for num in reversed(sorted_using) if total % num == 0), 1)
+        belts = round(total/largest_used_divisor)
+        # belts = total
+        return math.ceil(belts/belts_per_souce)
+    visited = DynamicDefaultDict(lambda x: upper_bound(x))
+    # occurences = occurences_in_list(numbers_in_path_list(path))
+    # sources = sum([math.ceil(value/belts_per_souce) for value in occurences.values()])
+    assert upper_bound(5)==visited[5]
+    print("Finding largest divisor")
+    largest_used_divisor = next((num for num in reversed(sorted_using) if target % num == 0), 1)
+    print("Finding worst path")
+    worst_path = [((i+1)*largest_used_divisor, ('+', largest_used_divisor)) for i in range(target//largest_used_divisor)]
+    print("Finding worst score")
     worst_score = path_score(worst_path)
     while queue:
         _, path = heapq.heappop(queue)
-        node, _ = path[-1]
+        node, (old_operator, old_operand) = path[-1]
+        print(f"{parsed_solution(path)}={node}")
         if node == target:
             # print(parsed_solution(path, operator_dict))
             return path
@@ -269,26 +294,46 @@ def minimal_set_solution(target, using, belt_max):
             for edge in edges:
                 operator, operand = edge
                 neighbor = operate(operator, node, operand)
-                if neighbor in {node, operand} or neighbor in using:
+                if neighbor in {node, operand}:
+                    continue
+                if '-' in operator_symbols and \
+                    (old_operand==operand and (old_operator, operator) in {('+', '-'), ('-', '+')}):
+                    continue
+                if '/' in operator_symbols and \
+                    (old_operand==operand and (old_operator, operator) in {('*', '/'), ('/', '*')}):
+                    continue
+                new_length = len(path)+1
+                if '/' in operator_symbols and new_length>neighbor+1:
+                    # Making x is as easy as (n*x)/n, even with small belts_per_souce
+                    # Ex. belts_per_souce=1, (2*1000)/2 gets 1000, 
+                    continue
+                if '^' in operator_symbols and neighbor == MAX_INT and new_length>=math.ceil(math.log(max_using, MAX_INT)):
                     continue
                 new_path = path.copy()
                 new_path.append((neighbor, edge))
                 # Might be necessary to make this faster
-                # if max_occurence_in_path(new_path) > belt_max:
+                # if max_occurence_in_path(new_path) > belts_per_souce:
                 #     continue
+                
+                
+                
+
                 new_cost = path_score(new_path)
-                if neighbor in visited and visited[neighbor] < new_cost:
-                    continue
                 if new_cost > worst_score:
-                    print(f"{new_path}>{worst_path}")
+                    # print(f"{new_path} worse than {worst_path}")
                     continue
+                # print(f"{parsed_solution(new_path)}={neighbor}")
+                new_visit_cost = sources_in_path(new_path, belts_per_souce)
+                if visited[neighbor] < new_visit_cost:
+                    continue
+                
                 new_input = queue_input(new_path, counter)
                 heapq.heappush(queue, new_input)
-                visited[neighbor] = new_cost
+                visited[neighbor] = new_visit_cost
                 counter += 1
     print(f"NO PATH TO {target} FOUND")
     # This should be impossible in all cases where 1 exists
-    return None
+    return worst_path
 
 def max_occurence_in_path(path):
     occurence = occurences_in_list(numbers_in_path_list(path))
@@ -307,6 +352,10 @@ def numbers_in_path_set(path):
 
 def numbers_in_path_list(path):
     return [edge[1] for _,edge in path]
+
+def operators_in_path_list(path):
+    # print(path)
+    return [edge[0] for _,edge in path[1:]]
 
 def path_cmp(a, b):
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
@@ -330,14 +379,27 @@ def path_cmp(a, b):
     
     if a_list != b_list:
         return int(a_list > b_list)*2-1
+    
+    operator_dict = {'':0, '+':1, '*':2, '-':3, '/':4, '^':5}
+    operator_vals_a = [operator_dict[operator] for operator in operators_in_path_list(a)]
+    operator_vals_b = [operator_dict[operator] for operator in operators_in_path_list(b)]
+
+    if operator_vals_a != operator_vals_b:
+        return int(operator_vals_a > operator_vals_b)*2-1
     return 0
 
-def path_set_cmp(a, b, max_allowed=9):
+def sources_in_path(path, belts_per_souce):
+    occurences = occurences_in_list(numbers_in_path_list(path))
+    return sum([math.ceil(value/belts_per_souce) for value in occurences.values()])
+
+def path_set_cmp(a, b, belts_per_souce=9):
+    # t1 = tuple([(1, (None, 1)), (2, ('+', 1)), (3, ('+', 1))])
+    # t2 = tuple([(2, (None, 2)), (4, ('+', 2)), (6, ('+', 2))])
+    # if (t1 in {tuple(a), tuple(b)} and t2 in {tuple(a), tuple(b)}):
+    #     print("Let's see this")
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
-    occurences_a = occurences_in_list(numbers_in_path_list(a))
-    sources_a = sum([math.ceil(value/max_allowed) for value in occurences_a.values()])
-    occurences_b = occurences_in_list(numbers_in_path_list(b))
-    sources_b = sum([math.ceil(value/max_allowed) for value in occurences_b.values()])
+    sources_a = sources_in_path(a, belts_per_souce)
+    sources_b = sources_in_path(b, belts_per_souce)
     if sources_a != sources_b:
         return int(sources_a > sources_b)*2-1
     return path_cmp(a, b)
@@ -385,6 +447,14 @@ def score_tests():
     path_b = [(3, (None, 3)), (18, ('*', 6))]
     assert path_score(path_a) < path_score(path_b)
 
+    path_a = [(2, (None, 2)), (4, ('+', 2)), (6, ('+', 2))]
+    path_b = [(2, (None, 2)), (4, ('+', 2)), (8, ('*', 2))]
+    assert path_score(path_a) < path_score(path_b)
+
+    path_a = [(2, (None, 2)), (4, ('+', 2)), (8, ('*', 2))]
+    path_b = [(2, (None, 2)), (4, ('+', 2)), (16, ('^', 2))]
+    assert path_score(path_a) < path_score(path_b)
+
 def test_1():
     allowed_numbers = [1]
     number = 4
@@ -430,6 +500,18 @@ def test_set_1():
     # print(parsed_solution(result))
     assert parsed_solution(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
 
+    number = 7
+    result = minimal_set_solution(number, allowed_numbers, 100)
+    assert result != None
+    # print(parsed_solution(result))
+    assert parsed_solution(result) in {"(((2+2)^2)-2)/2"}
+
+    number = 3
+    result = minimal_set_solution(number, allowed_numbers, 100)
+    assert result != None
+    # print(parsed_solution(result))
+    assert parsed_solution(result) in {"(1+1)+1"}
+
 def run_tests():
     score_tests()
     test_1()
@@ -452,52 +534,66 @@ def sort_by_difficulty(numbers, allowed_numbers):
         
     return sorting_list
 
-def sort_by_set_difficulty(numbers, allowed_numbers, belt_max):
-    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belt_max))
-    paths = [minimal_set_solution(number, allowed_numbers, belt_max) for number in numbers]
+def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_souce):
+    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belts_per_souce))
+    paths = [minimal_set_solution(number, allowed_numbers, belts_per_souce) for number in numbers]
     numbers_paths = zip(numbers, paths)
     scores = [path_score(path) for path in paths]
-    print(paths)
+    # print(paths)
     sorting_list = sorted(zip(numbers_paths, scores), key=lambda x:x[1])
     for (number, path), _ in sorting_list:
         print()
         print(number)
         print(parsed_solution(path))
-    print([parsed_solution(path) for path in paths])
+    print([(i+1,parsed_solution(path)) for i,path in enumerate(paths)])
+    # print([(i+1,parsed_solution(path)) for i,path in enumerate(paths) if not ('*' in parsed_solution(path) or '-' in parsed_solution(path) or '/' in parsed_solution(path) or '^' in parsed_solution(path))])
+    # print([i+1 for i,path in enumerate(paths) if ('*' in parsed_solution(path))])
+    print([i+1 for i,path in enumerate(paths) if (len(path)==1 or '+' not in operators_in_path_list(path[2:]))])
+    print([len(path) for path in paths])
     print([number for (number, _), _ in sorting_list])
     return sorting_list
 
-def main(allowed_numbers, belt_max):
+def main(allowed_numbers, belts_per_souce):
     user_input = ""
     while not user_input.isdigit():
         user_input = input("Please enter an integer >> ").strip()
     number = int(user_input)
     print(f"How to make {number} in minimal numbers")
+    assert number <= MAX_INT
     # allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
     # allowed_numbers = [1, 2]
     print(f"Allowed to use {allowed_numbers}")
     # test_div(allowed_numbers)
     # solution = minimal_solution(number, allowed_numbers)
     t0 = time.time()
-    solution = minimal_set_solution(number, allowed_numbers, belt_max)
+    solution = minimal_set_solution(number, allowed_numbers, belts_per_souce)
     t1 = time.time()
     print(f"Calculation took {round(t1-t0, 3)} seconds")
     if solution != None:
         print(f"Solution found")
         print(parsed_solution(solution))
 
+def replace_base(lst, base) -> int:
+    step = 0
+    result = 0
+    for number in lst:
+        result += number*(base**step)
+        step += 1
+    return result
+
 if __name__ == "__main__":
     nonexistent = {10}
     max_num = 37
-    max_num = 2
-    # If your belt_max is too high, this will take ages (ex. 1+1+1+1+1...)
-    belt_max = float('inf')
+    # max_num = 2
+    # If your belts_per_souce is too high, this will take ages (ex. 1+1+1+1+1...)
+    belts_per_souce = 10
+    # belts_per_souce = 100000
     allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
     numbers = [79312, 12279, 11058, 3988839]
-    numbers = [i+1 for i in range(0, 100) if i+1 not in allowed_numbers]
-    print(numbers, allowed_numbers)
+    numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
+    # print(numbers, allowed_numbers)
     run_tests()
-    # main(allowed_numbers, belt_max)
+    main(allowed_numbers, belts_per_souce)
     # sort_by_difficulty(numbers, allowed_numbers)
-    sort_by_set_difficulty(numbers, allowed_numbers, belt_max)
+    # sort_by_set_difficulty(numbers, allowed_numbers, belts_per_souce)
     # test_div(allowed_numbers, 2000)
