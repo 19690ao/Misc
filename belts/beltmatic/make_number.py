@@ -370,16 +370,18 @@ def minimal_set_solution(target, using, belts_per_source):
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
-        print(f"{str(path)}={node}")
+        # print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
             return path
         else:
             # edges_t0 = time.time()
+            first_operand = path[0][1][1]
             for edge in edges:
                 # t0 = time.time()
                 operator, operand = edge
                 neighbor = operate(operator, node, operand)
+                
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.03: print(f"Step B took {round(t1-t0, 3)}s")
 
@@ -398,17 +400,19 @@ def minimal_set_solution(target, using, belts_per_source):
                 new_length = len(path)+1
                 if '/' in operator_symbols and new_length>neighbor+1:
                     # Making x is as easy as (n*x)/n, even with small belts_per_source
-                    # Ex. belts_per_source=1, (2*1000)/2 gets 1000, 
+                    # There are x n's divided by 1 n, giving x+1 operands
                     continue
                 if '^' in operator_symbols and neighbor == MAX_INT and new_length>=math.ceil(math.log(max_using, MAX_INT)):
+                    continue
+                if (neighbor%first_operand==0 and new_length>round(neighbor/first_operand)) or (neighbor%operand==0 and new_length>round(neighbor/operand)):
                     continue
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.03: print(f"Step D took {round(t1-t0, 3)}s")
 
-                # t0 = time.time()
+                t0 = time.time()
                 new_path = path.copy()
-                # t1 = time.time()
-                # if round(t1-t0,3)>=0.03: print(f"Step E took {round(t1-t0, 3)}s")
+                t1 = time.time()
+                if round(t1-t0,3)>=0.1: print(f"Step E took {round(t1-t0, 3)}s")
                 new_path.append((neighbor, edge))
                 # Might be necessary to make this faster
                 # if max_occurence_in_path(new_path) > belts_per_source:
@@ -421,17 +425,22 @@ def minimal_set_solution(target, using, belts_per_source):
                     # print(f"{new_path} worse than {worst_path}")
                     continue
                 # print(f"{str(new_path)}={neighbor}")
+                t0 = time.time()
                 new_visit_cost = sources_in_path(new_path, belts_per_source)
                 if visited[neighbor] < new_visit_cost:
                     continue
-                # t1 = time.time()
-                # if round(t1-t0,3)>=0.03: print(f"Step F took {round(t1-t0, 3)}s")
+                t1 = time.time()
+                if round(t1-t0,3)>=0.1: print(f"Step F took {round(t1-t0, 3)}s")
                 # t0 = time.time()
                 new_input = queue_input(new_path) #, counter)
-                heapq.heappush(queue, new_input)
-                visited[neighbor] = new_visit_cost
                 # t1 = time.time()
-                # if round(t1-t0,3)>=0.03: print(f"Step G took {round(t1-t0, 3)}s")
+                # if round(t1-t0,3)>=0.1: print(f"Step G took {round(t1-t0, 3)}s")
+                t0 = time.time()
+                heapq.heappush(queue, new_input)
+                t1 = time.time()
+                if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
+                visited[neighbor] = new_visit_cost
+                
                 # counter += 1
                 
             # edges_t1 = time.time()
@@ -740,7 +749,7 @@ if __name__ == "__main__":
     max_num = 37
     # max_num = 2
     # If your belts_per_source is too high, this will take ages (ex. 1+1+1+1+1...)
-    belts_per_source = 7
+    belts_per_source = 9
     # belts_per_source = 100000
     allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
     numbers = [79312, 12279, 11058, 3988839]
