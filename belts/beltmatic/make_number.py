@@ -14,7 +14,78 @@ class DynamicDefaultDict(defaultdict):
         self[key] = self.default_factory(key)
         return self[key]
 
-class ExpressionPath(list):
+class LinkedNode:
+    def __init__(self, value, parent_node=None):
+        self.value = value
+        self.parent_node = parent_node
+
+class ImmutableLinkedList:
+    def __init__(self, iterable=None):
+        self.head = None
+        self.tail = None
+        self.length = 0
+        if iterable is not None:
+            for value in iterable:
+                new_node = LinkedNode(value)
+                if self.head is None:
+                    self.head = self.tail = new_node
+                else:
+                    new_node.parent_node = self.tail
+                    self.tail = new_node
+                self.length += 1
+
+    def to_list(self):
+        result = []
+        current_node = self.tail
+        while current_node is not None:
+            result.append(current_node.value)
+            current_node = current_node.parent_node
+        return list(reversed(result))
+
+    def __len__(self):
+        return self.length
+    
+    def __getitem__(self, index):
+        if isinstance(index,int):
+            if index == 0:
+                return self.head.value
+            if index == -1:
+                return self.tail.value
+            assert False
+
+    def __repr__(self):
+        return f"ImmutableLinkedList({self.to_list()})"
+    
+    def __iter__(self):
+        nodes = []
+        current_node = self.tail
+        while current_node is not None:
+            nodes.append(current_node.value)
+            current_node = current_node.parent_node
+        return iter(nodes[::-1])
+
+
+    def iter_excluding_ends(self):
+        nodes = []
+        current_node = self.tail
+        while current_node is not None:
+            nodes.append(current_node.value)
+            current_node = current_node.parent_node
+        return iter(nodes[-2:0:-1])
+
+    def appended(self, value):
+        copied = ImmutableLinkedList()
+        copied.head = self.head
+        new_node = LinkedNode(value)
+        if self.head is None:
+            self.head = self.tail = new_node
+        else:
+            new_node.parent_node = self.tail
+            copied.tail = new_node
+        copied.length = self.length+1
+        return copied
+
+class ExpressionPath(ImmutableLinkedList):
     def __init__(self, lst, belts_per_source=None):
         super().__init__(lst)
         self.calculated_sum = None
@@ -50,35 +121,64 @@ class ExpressionPath(list):
             self.calculated_sum = sum(operand*occurence_number for operand, occurence_number in self.operand_occurences().items())
         return self.calculated_sum
 
-    def append(self, item):
-        # print(self, item)
-        operand = item[1][1]
-        self.calculated_sum = self.sum() + operand
-        self.occurences[operand] += 1
-        if self.occurences[operand]%self.belts_per_source==1:
-            self.calculated_sources += 1
-        return super().append(item)
-        
-    def copy(self):
-        copied = ExpressionPath(self, self.belts_per_source)
+    # def appended(self, item):
+    #     # print(self, item)
+    #     operand = item[1][1]
+    #     self.calculated_sum = self.sum() + operand
+    #     self.occurences[operand] += 1
+    #     if self.occurences[operand]%self.belts_per_source==1:
+    #         self.calculated_sources += 1
+    #     return super().appended(item)
+    
+    def appended(self, value):
+        copied = ExpressionPath(None, self.belts_per_source)
+        copied.head = self.head
+        new_node = LinkedNode(value)
+        if self.head is None:
+            copied.head = copied.tail = new_node
+        else:
+            new_node.parent_node = self.tail
+            copied.tail = new_node
+        copied.length = self.length+1
         copied.calculated_sum = self.calculated_sum
         copied.calculated_sources = self.calculated_sources
+        t0 = time.time()
         if self.occurences is not None:
             copied.occurences = self.occurences.copy()
+        t1 = time.time()
+        if round(t1-t0,3)>=0.1: print(f"Step I took {round(t1-t0, 3)}s")
+        operand = value[1][1]
+        copied.calculated_sum = self.sum() + operand
+        copied.occurences[operand] += 1
+        if copied.occurences[operand]%copied.belts_per_source==1:
+            copied.calculated_sources += 1
+        
         return copied
+
+
+    # def copy(self):
+    #     copied = ExpressionPath(self, self.belts_per_source)
+    #     copied.calculated_sum = self.calculated_sum
+    #     copied.calculated_sources = self.calculated_sources
+    #     if self.occurences is not None:
+    #         copied.occurences = self.occurences.copy()
+    #     return copied
 
     def __str__(self):
         ans = str(self[0][0])
         if len(self) <= 1:
             return ans
         # print(list(raw_solution))
-        for _, edge in self[1:-1]:
+        for _, edge in self.iter_excluding_ends():
             operator, operand = edge
             ans = f"({ans}{operator}{operand})"
         last_edge = self[-1][1]
         operator, operand = last_edge
         ans = f"{ans}{operator}{operand}"
         return ans
+    
+    def __repr__(self):
+        return str(self)
 
     def max_occurence(self):
         return max(self.operand_occurences.values())
@@ -91,7 +191,7 @@ class ExpressionPath(list):
 
     def operator_list(self):
         # print(path)
-        return [edge[0] for _,edge in self[1:]]
+        return [edge[0] for _,edge in self][1:]
 
 def operate(symbol, a, b):
     assert a > 0 and b > 0
@@ -410,10 +510,13 @@ def minimal_set_solution(target, using, belts_per_source):
                 # if round(t1-t0,3)>=0.03: print(f"Step D took {round(t1-t0, 3)}s")
 
                 t0 = time.time()
-                new_path = path.copy()
+                # new_path = path.copy()
+                # new_path.append((neighbor, edge))
+                # Why on earth would this take 49s???
+                new_path = path.appended((neighbor, edge))
                 t1 = time.time()
                 if round(t1-t0,3)>=0.1: print(f"Step E took {round(t1-t0, 3)}s")
-                new_path.append((neighbor, edge))
+                
                 # Might be necessary to make this faster
                 # if max_occurence_in_path(new_path) > belts_per_source:
                 #     continue
@@ -426,7 +529,8 @@ def minimal_set_solution(target, using, belts_per_source):
                     continue
                 # print(f"{str(new_path)}={neighbor}")
                 t0 = time.time()
-                new_visit_cost = sources_in_path(new_path, belts_per_source)
+                # I can't think of a reason this would take 35s
+                new_visit_cost = sources_in_path(new_path)
                 if visited[neighbor] < new_visit_cost:
                     continue
                 t1 = time.time()
@@ -436,6 +540,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step G took {round(t1-t0, 3)}s")
                 t0 = time.time()
+                # Make the sorting O(1), it's linear now. This is relatively "okay"
                 heapq.heappush(queue, new_input)
                 t1 = time.time()
                 if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
@@ -502,9 +607,10 @@ def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
 
     if operator_vals_a != operator_vals_b:
         return int(operator_vals_a > operator_vals_b)*2-1
+    print(f"No difference between {a} and {b}")
     return 0
 
-def sources_in_path(path: ExpressionPath, belts_per_source: int) -> int:
+def sources_in_path(path: ExpressionPath) -> int:
     # occurences = path.operand_occurences()
     # t0 = time.time()
     # result = sum([math.ceil(value/belts_per_source) for value in occurences.values()])
@@ -520,10 +626,13 @@ def path_set_cmp(a: ExpressionPath, b: ExpressionPath):
     # if (t1 in {tuple(a), tuple(b)} and t2 in {tuple(a), tuple(b)}):
     #     print("Let's see this")
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
+    assert isinstance(a, ExpressionPath)
+    assert isinstance(b, ExpressionPath)
     sources_a = a.sources()
     sources_b = b.sources()
     if sources_a != sources_b:
         return int(sources_a > sources_b)*2-1
+    # print(f"{a}.sources=={b}.sources=={sources_a}=={sources_b}")
     return path_cmp(a, b)
 
 def parsed_solution(raw_solution):
@@ -549,6 +658,52 @@ def test_div(allowed_numbers, last):
         parsed = str(solution)
         if '/' in parsed:
             print(f"{i}={parsed}")
+
+def path_test_1():
+    lst = [1, 2, 3, 4, 5]
+    immutable_linked_list = ImmutableLinkedList(lst)
+    # print(f"{lst} vs {immutable_linked_list.to_list()}")
+    assert len(immutable_linked_list) == 5
+    assert lst == immutable_linked_list.to_list()
+
+    # print(f"{lst} vs {[i for i in immutable_linked_list]}")
+    assert lst == [i for i in immutable_linked_list]
+
+    # print(f"{lst[1:-1]} vs {[i for i in immutable_linked_list.iter_excluding_ends()]}")
+    assert lst[1:-1] == [i for i in immutable_linked_list.iter_excluding_ends()]
+
+    lst.append(6)
+    appended_list = immutable_linked_list.appended(6)
+    # print(f"{lst} vs {[i for i in appended_list]}")
+    assert lst == [i for i in appended_list]
+    assert len(appended_list) == 6
+    
+    lst = [1,2,3,4,5]
+    assert lst == immutable_linked_list.to_list()
+
+    # print(f"{lst} vs {[i for i in immutable_linked_list]}")
+    assert lst == [i for i in immutable_linked_list]
+
+    # print(f"{lst[1:-1]} vs {[i for i in immutable_linked_list.iter_excluding_ends()]}")
+    assert lst[1:-1] == [i for i in immutable_linked_list.iter_excluding_ends()]
+
+def path_test_2():
+    path_lst = [(1, (None, 1))]
+    path = ExpressionPath(path_lst, 2)
+    assert path.operand_occurences()[1] == 1
+    
+    path_lst.append((2, ('+', 1)))
+    assert path.operand_occurences()[1] == 1
+    path = ExpressionPath(path_lst, 2)
+    assert path.operand_occurences()[1] == 2
+    assert path.sources() == 1
+
+    new_path = path.appended((3, ('+', 1)))
+    assert new_path.operand_occurences()[1] == 3
+    assert new_path.sources() == 2
+    assert path.operand_occurences()[1] == 2
+    assert path.sources() == 1
+
 
 def score_tests():
     path_score = functools.cmp_to_key(path_cmp)
@@ -676,6 +831,8 @@ def test_set_1():
     assert str(result) in {"(1+1)+1"}
 
 def run_tests():
+    path_test_1()
+    path_test_2()
     score_tests()
     test_1()
     test_2()
