@@ -18,6 +18,12 @@ class LinkedNode:
     def __init__(self, value, parent_node=None):
         self.value = value
         self.parent_node = parent_node
+    
+    def __repr__(self):
+        return str(self)
+    
+    def __str__(self):
+        return f"LinkedNode({self.value})"
 
 class ImmutableLinkedList:
     def __init__(self, iterable=None):
@@ -27,6 +33,7 @@ class ImmutableLinkedList:
         if iterable is not None:
             for value in iterable:
                 new_node = LinkedNode(value)
+                print(f"new_node={new_node}")
                 if self.head is None:
                     self.head = self.tail = new_node
                 else:
@@ -92,9 +99,11 @@ class ExpressionPath(ImmutableLinkedList):
         self.occurences = None
         self.calculated_sources = None
         self.belts_per_source = belts_per_source
+        self.calculated_max_occurence = None
     
     def operand_occurences(self) -> defaultdict:
         if self.occurences is None:
+            # print("Shouldn't be here often")
             self.occurences = defaultdict(lambda: 0)
             for operand in self.operand_list():
                 assert isinstance(operand, int)
@@ -118,6 +127,7 @@ class ExpressionPath(ImmutableLinkedList):
 
     def sum(self):
         if self.calculated_sum is None:
+            # print("Shouldn't be here often")
             self.calculated_sum = sum(operand*occurence_number for operand, occurence_number in self.operand_occurences().items())
         return self.calculated_sum
 
@@ -131,38 +141,38 @@ class ExpressionPath(ImmutableLinkedList):
     #     return super().appended(item)
     
     def appended(self, value):
+        
         copied = ExpressionPath(None, self.belts_per_source)
+        t0 = time.time()
         copied.head = self.head
         new_node = LinkedNode(value)
+        t1 = time.time()
+        if round(t1-t0,3)>=0.1: print(f"Step I took {round(t1-t0, 3)}s")
         if self.head is None:
             copied.head = copied.tail = new_node
         else:
             new_node.parent_node = self.tail
             copied.tail = new_node
+        
         copied.length = self.length+1
         copied.calculated_sum = self.calculated_sum
         copied.calculated_sources = self.calculated_sources
+        
         t0 = time.time()
         if self.occurences is not None:
             copied.occurences = self.occurences.copy()
         t1 = time.time()
-        if round(t1-t0,3)>=0.1: print(f"Step I took {round(t1-t0, 3)}s")
+        if round(t1-t0,3)>=0.1: print(f"Step J took {round(t1-t0, 3)}s")
+        # The following is O(1)
         operand = value[1][1]
         copied.calculated_sum = self.sum() + operand
         copied.occurences[operand] += 1
         if copied.occurences[operand]%copied.belts_per_source==1:
             copied.calculated_sources += 1
-        
+        copied.calculated_max_occurence = self.calculated_max_occurence
+        if copied.occurences[operand] > copied.max_occurence():
+            copied.calculated_max_occurence = copied.occurences[operand]
         return copied
-
-
-    # def copy(self):
-    #     copied = ExpressionPath(self, self.belts_per_source)
-    #     copied.calculated_sum = self.calculated_sum
-    #     copied.calculated_sources = self.calculated_sources
-    #     if self.occurences is not None:
-    #         copied.occurences = self.occurences.copy()
-    #     return copied
 
     def __str__(self):
         ans = str(self[0][0])
@@ -181,7 +191,9 @@ class ExpressionPath(ImmutableLinkedList):
         return str(self)
 
     def max_occurence(self):
-        return max(self.operand_occurences.values())
+        if self.calculated_max_occurence is None:
+            self.calculated_max_occurence = max(self.operand_occurences().values())
+        return self.calculated_max_occurence
 
     def operand_set(self):
         return set(self.operand_list())
@@ -418,6 +430,10 @@ def minimal_solution(target: int, using: list) -> ExpressionPath:
     print(f"NO PATH TO {target} FOUND")
     return None
 
+def largest_divisor_in_sorted_list(number, sorted_list):
+    return next((num for num in reversed(sorted_list) if number % num == 0), 1)
+
+
 def minimal_set_solution(target, using, belts_per_source):
     print(f"Finding {target}")
     sorted_using = sorted(using)
@@ -454,23 +470,23 @@ def minimal_set_solution(target, using, belts_per_source):
     # occurences = occurences_in_list(numbers_in_path_list(path))
     # sources = sum([math.ceil(value/belts_per_source) for value in occurences.values()])
     assert upper_bound(5)==visited[5]
-    print("Finding largest divisor")
-    largest_used_divisor = next((num for num in reversed(sorted_using) if target % num == 0), 1)
-    print("Finding worst path")
+    # print("Finding largest divisor")
+    largest_used_divisor = largest_divisor_in_sorted_list(target, sorted_using)
+    # print("Finding worst path")
     # path_t0 = time.time()
     # ((i+1)*largest_used_divisor, ('+', largest_used_divisor))
     edge = ('+', largest_used_divisor)
     # temp = [((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)]
     # path_t1 = time.time()
     # print(f"Takes {round(path_t1-path_t0, 2)}s")
-    worst_path = ExpressionPath([((i+1)*largest_used_divisor, edge) for i in range(round(target/largest_used_divisor))], belts_per_source)
+    worst_path = make_worst_path(target, sorted_using, belts_per_source)
     print("Finding worst score")
     worst_score = path_score(worst_path)
     edges = [(operator, operand) for operator in operator_symbols for operand in using]
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
-        # print(f"{str(path)}={node}")
+        print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
             return path
@@ -554,25 +570,54 @@ def minimal_set_solution(target, using, belts_per_source):
     # This should be impossible in all cases where 1 exists
     return worst_path
 
-# def max_occurence_in_path(path):
-#     occurence = occurences_in_list(numbers_in_path_list(path))
-#     return max(occurence.values())
+def make_worst_path(target, sorted_list, belts_per_source):
+    assert sorted_list[0] == 1
+    tetration = False
+    exponentiation = False
+    path = None
+    largest_base = -1
+    power = -1
+    tetration_base = -1
+    height = -1
+    for base in reversed(sorted_list):
+        if base == 1: continue
+        print(base, target)
+        potential_power = round(math.log(target, base))
+        is_base = base**potential_power==target
+        if is_base:
+            if not exponentiation:
+                largest_base = base
+                power = potential_power
+                exponentiation = True
+            # Check tetration base
+            potential_height = round(math.log(potential_power, base))
+            # Calculate the tetration result
+            tetration_result = base ** (base ** (height - 1))
+            if tetration_result == target:
+                height = potential_height
+                tetration_base = base
+                break
+    if height >= power:
+        tetration = False
+    if tetration:
+        edge = ('^', tetration_base)
+        path = ExpressionPath([(tetration_base**(tetration_base**(i)), edge) for i in range(height)], belts_per_source)
+    elif exponentiation:
+        edge = ('*', largest_base)
+        path = ExpressionPath([(largest_base**(i+1), edge) for i in range(power)], belts_per_source)
+        print(f"Exp = {path}")
+    else:
+        divisor = next((num for num in reversed(sorted_list) if target % num == 0), 1)
+        edge = ('+', divisor)
+        path =  ExpressionPath([((i+1)*divisor, edge) for i in range(round(target/divisor))], belts_per_source)
 
-# def occurences_in_list(numbers):
-#     occurences = defaultdict(lambda: 0)
-#     for number in numbers:
-#         occurences[number] += 1
-#     return occurences
+    return path
 
-# def numbers_in_path_set(path):
-#     return set(numbers_in_path_list(path))
+def largest_base_exponent_of(target, sorted_list):
+    return next(((num, round(math.log(target, num))) for num in reversed(sorted_list) if num**round(math.log(target, num))==target), (None, None))
 
-# def numbers_in_path_list(path):
-#     return [edge[1] for _,edge in path]
-
-# def operators_in_path_list(path):
-#     # print(path)
-#     return [edge[0] for _,edge in path[1:]]
+def largest_base_height_of(target, sorted_list):
+    return next(((num, round()) for num in reversed(sorted_list) if num**round(math.log(target, num))==target and round(math.log(target, num))), None)
 
 def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
@@ -830,15 +875,40 @@ def test_set_1():
     # print(result)
     assert str(result) in {"(1+1)+1"}
 
+
+def test_set_2():
+    allowed_numbers = [1, 2, 3, 4, 5, 6, 7, 8]
+    number = 64
+    result = minimal_set_solution(number, allowed_numbers, 100)
+    assert result != None
+    print(result)
+    assert str(result) in {"8*8"}
+
+    number = 16777216
+    result = minimal_set_solution(number, allowed_numbers, 100)
+    assert result != None
+    print(result)
+    assert str(result) in {"8^8"}
+
+def largest_divisor_test_1():
+    sorted_using = [i+1 for i in range(30)]
+    assert largest_divisor_in_sorted_list(387420489, sorted_using) == 27
+
 def run_tests():
     path_test_1()
     path_test_2()
+
+    largest_divisor_test_1()
+
     score_tests()
     test_1()
     test_2()
     test_3()
 
     test_set_1()
+    test_set_2()
+
+    print(f"ALL CURRENT TESTS PASSED! :D")
 
 def sort_by_difficulty(numbers, allowed_numbers):    
     path_score = functools.cmp_to_key(path_cmp)
@@ -855,7 +925,7 @@ def sort_by_difficulty(numbers, allowed_numbers):
     return sorting_list
 
 def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source):
-    path_score = functools.cmp_to_key(lambda a, b: path_set_cmp(a, b, belts_per_source))
+    path_score = functools.cmp_to_key(path_set_cmp)
     paths = [minimal_set_solution(number, allowed_numbers, belts_per_source) for number in numbers]
     numbers_paths = zip(numbers, paths)
     scores = [path_score(path) for path in paths]
