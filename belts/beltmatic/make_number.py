@@ -33,7 +33,7 @@ class ImmutableLinkedList:
         if iterable is not None:
             for value in iterable:
                 new_node = LinkedNode(value)
-                print(f"new_node={new_node}")
+                # print(f"new_node={new_node}")
                 if self.head is None:
                     self.head = self.tail = new_node
                 else:
