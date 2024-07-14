@@ -485,7 +485,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 # Check tetration base
                 potential_height = round(math.log(potential_power, base))
                 # Calculate the tetration result
-                tetration_result = base ** (base ** (height - 1))
+                tetration_result = base ** (base ** (potential_height - 1))
                 if tetration_result == total:
                     height = potential_height
                     break
