@@ -7,14 +7,6 @@ from collections import defaultdict
 MAX_INT = 2147483647
 MIN_INT = -2147483648
 
-class DynamicDefaultDict(defaultdict):
-    def __missing__(self, key):
-        if self.default_factory is None:
-            raise KeyError(key)
-        # self[key] = self.default_factory(key)
-        # return self[key]
-        return self.default_factory(key)
-
 class LinkedNode:
     def __init__(self, value, parent_node=None):
         self.value = value
@@ -457,48 +449,16 @@ def minimal_set_solution(target, using, belts_per_source):
     heapq.heapify(queue)
     # print(queue)
 
-    # Set the default function (UPPER BOUND)
-    def upper_bound(total, number_used):
-        if total == number_used:
-            return 1
-        options = []
-        # print(total, number_used)
-        is_base = False
-        power = None
-        assert total > 0
-        if number_used != 1:
-            power = round(math.log(total, number_used))
-            is_base = number_used**power==total
-        if is_base:
-            options.append(power)
-            # Check for tetration
-            # print(power, number_used)
-            if power != 0:
-                height = round(math.log(power, number_used))
-                # Calculate the tetration result
-                tetration_result = number_used ** (number_used ** height)
-                if tetration_result == total:
-                    options.append(height+1)
-        if total%number_used==0:
-            options.append(round(total/number_used))
-        if total*number_used<=MAX_INT:
-            options.append(total+1)
-        
-        if not options:
-            options.append(float('inf'))
-        belts = min(options)
-        return belts
-        
-    visited = DynamicDefaultDict(lambda x: upper_bound(*x))
+    visited = defaultdict(lambda: float('inf'))
     worst_path = make_worst_path(target, sorted_using, belts_per_source)
-    print("Finding worst score")
+    # print("Finding worst score")
     worst_score = path_score(worst_path)
     edges = [(operator, operand) for operator in operator_symbols for operand in using]
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
         # print(f"{str(path)}={node}")
-        if old_operator == '/' and old_operand == 7 and node == 5: print(f"{str(path)}={node}")
+        # if old_operator == '/' and old_operand == 7 and node == 5: print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
             return path
@@ -553,8 +513,6 @@ def minimal_set_solution(target, using, belts_per_source):
                 # Might be necessary to make this faster
                 # if max_occurence_in_path(new_path) > belts_per_source:
                 #     continue
-                # if 7 == operand and neighbor == 49:
-                #     print("HELL")
                 
                 # t0 = time.time()
                 new_cost = path_score(new_path)
@@ -570,6 +528,8 @@ def minimal_set_solution(target, using, belts_per_source):
                 for used_operand in new_path.operand_set():
                     if visited[(neighbor, used_operand)] < new_visit_cost:
                         worse = True
+                        # print(new_path)
+                        # print(upper_bound(neighbor, used_operand))
                         break
                 if worse:
                     continue
@@ -598,8 +558,6 @@ def minimal_set_solution(target, using, belts_per_source):
 
 def make_worst_path(target, sorted_list, belts_per_source):
     assert sorted_list[0] == 1
-    if target == 49:
-        print("Huh?")
     tetration = False
     exponentiation = False
     path = None
@@ -618,6 +576,9 @@ def make_worst_path(target, sorted_list, belts_per_source):
                 power = potential_power
                 exponentiation = True
             # Check tetration base
+            if potential_power == 0:
+                continue
+            # print(f"{base}^x={potential_power}")
             potential_height = round(math.log(potential_power, base))
             # Calculate the tetration result
             tetration_result = base ** (base ** (potential_height - 1))
@@ -641,7 +602,7 @@ def make_worst_path(target, sorted_list, belts_per_source):
 
     return path
 
-def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
+def path_cmp(a, b) -> int:
     # Returns -1 if a<b, 0 if a=b, 1 if a>b
     if not isinstance(a, ExpressionPath):
         a = ExpressionPath(a)
@@ -674,7 +635,8 @@ def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
 
     if operator_vals_a != operator_vals_b:
         return int(operator_vals_a > operator_vals_b)*2-1
-    print(f"No difference between {a} and {b}")
+    # print(f"No difference between {a} and {b}")
+    assert str(a) == str(b)
     return 0
 
 def path_set_cmp(a: ExpressionPath, b: ExpressionPath):
@@ -938,6 +900,7 @@ def sort_by_difficulty(numbers, allowed_numbers):
     return sorting_list
 
 def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source):
+    t0 = time.time()
     path_score = functools.cmp_to_key(path_set_cmp)
     paths = [minimal_set_solution(number, allowed_numbers, belts_per_source) for number in numbers]
     numbers_paths = zip(numbers, paths)
@@ -954,6 +917,8 @@ def sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source):
     # print([i+1 for i,path in enumerate(paths) if (len(path)==1 or '+' not in operators_in_path_list(path[2:]))])
     print([len(path) for path in paths])
     print([number for (number, _), _ in sorting_list])
+    t1 = time.time()
+    print(f"That took {round(t1-t0, 3)}s total for an average of {round((t1-t0)/len(paths), 3)}s")
     return sorting_list
 
 def main(allowed_numbers, belts_per_source):
