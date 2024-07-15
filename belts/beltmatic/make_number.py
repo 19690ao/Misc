@@ -11,8 +11,9 @@ class DynamicDefaultDict(defaultdict):
     def __missing__(self, key):
         if self.default_factory is None:
             raise KeyError(key)
-        self[key] = self.default_factory(key)
-        return self[key]
+        # self[key] = self.default_factory(key)
+        # return self[key]
+        return self.default_factory(key)
 
 class LinkedNode:
     def __init__(self, value, parent_node=None):
@@ -471,7 +472,7 @@ def minimal_set_solution(target, using, belts_per_source):
         if is_base:
             options.append(power)
             # Check for tetration
-            print(power, number_used)
+            # print(power, number_used)
             if power != 0:
                 height = round(math.log(power, number_used))
                 # Calculate the tetration result
@@ -496,8 +497,8 @@ def minimal_set_solution(target, using, belts_per_source):
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
-        print(f"{str(path)}={node}")
-        # if old_operator == '/' and old_operand == 7: print(f"{str(path)}={node}")
+        # print(f"{str(path)}={node}")
+        if old_operator == '/' and old_operand == 7 and node == 5: print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
             return path
@@ -524,7 +525,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 # # if round(t1-t0,3)>=0.03: print(f"Step C took {round(t1-t0, 3)}s")
                 # t0 = time.time()
                 new_length = len(path)+1
-                if '/' in operator_symbols and new_length>neighbor+1:
+                if '/' in operator_symbols and new_length>neighbor+1 and operand*node<=MAX_INT :
                     # Making x is as easy as (n*x)/n=(n+n+n+..+n_x)/n, even with small belts_per_source
                     # There are x n's divided by 1 n, giving x+1 operands
                     continue
@@ -566,7 +567,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 # new_visit_cost =  new_path.sources()
                 new_visit_cost = new_length                
                 worse = False
-                for used_operand in new_path.operand_list():
+                for used_operand in new_path.operand_set():
                     if visited[(neighbor, used_operand)] < new_visit_cost:
                         worse = True
                         break
@@ -584,7 +585,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
                 # visited[neighbor] = new_visit_cost
-                if len(new_path.operand_list()) == 1:
+                if len(new_path.operand_set()) == 1:
                     visited[(neighbor, used_operand)] = new_visit_cost
                 
                 # counter += 1
