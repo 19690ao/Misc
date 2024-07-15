@@ -1,5 +1,6 @@
 import functools
 import heapq
+import itertools
 import math
 import time
 from collections import defaultdict
@@ -457,7 +458,7 @@ def minimal_set_solution(target, using, belts_per_source):
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
-        # print(f"{str(path)}={node}")
+        print(f"{str(path)}={node}")
         # if old_operator == '/' and old_operand == 7 and node == 5: print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
@@ -491,62 +492,26 @@ def minimal_set_solution(target, using, belts_per_source):
                     continue
                 if '^' in operator_symbols and neighbor == MAX_INT and new_length>=math.ceil(math.log(max_using, MAX_INT)):
                     continue
-                if (neighbor%old_operand==0 and new_length>round(neighbor/old_operand)) or \
-                    (neighbor%operand==0 and new_length>round(neighbor/operand)):
-                    continue
-                if ((neighbor-1)%old_operand==0 and new_length>round((neighbor-1)/old_operand)+2) or \
-                    ((neighbor-1)%operand==0 and new_length>round((neighbor-1)/operand)+2):
-                    continue
-
-
-                # t1 = time.time()
-                # # if round(t1-t0,3)>=0.03: print(f"Step D took {round(t1-t0, 3)}s")
-
-                # t0 = time.time()
-                # new_path = path.copy()
-                # new_path.append((neighbor, edge))
-                # Why on earth would this take 49s???
                 new_path = path.appended((neighbor, edge))
-                # t1 = time.time()
-                # if round(t1-t0,3)>=0.1: print(f"Step E took {round(t1-t0, 3)}s")
-                
-                # Might be necessary to make this faster
-                # if max_occurence_in_path(new_path) > belts_per_source:
-                #     continue
-                
-                # t0 = time.time()
                 new_cost = path_score(new_path)
                 if new_cost > worst_score:
-                    # print(f"{new_path} worse than {worst_path}")
                     continue
-                # print(f"{str(new_path)}={neighbor}")
-                # t0 = time.time()
-                # I can't think of a reason this would take 35s
-                # new_visit_cost =  new_path.sources()
-                new_visit_cost = new_length                
+                new_visit_cost =  new_path.sources()
+                # new_visit_cost = new_length                
                 worse = False
-                for used_operand in new_path.operand_set():
-                    if visited[(neighbor, used_operand)] < new_visit_cost:
+                for used_operands in non_empty_subsets(new_path.operand_set()):
+                    if visited[(neighbor, frozenset(used_operands))] < new_visit_cost:
                         worse = True
-                        # print(new_path)
-                        # print(upper_bound(neighbor, used_operand))
                         break
+                
                 if worse:
                     continue
-                # t1 = time.time()
-                # if round(t1-t0,3)>=0.1: print(f"Step F took {round(t1-t0, 3)}s")
-                # t0 = time.time()
                 new_input = queue_input(new_path) #, counter)
-                # t1 = time.time()
-                # # if round(t1-t0,3)>=0.1: print(f"Step G took {round(t1-t0, 3)}s")
-                # t0 = time.time()
-                # Make the sorting O(1), it's linear now. This is relatively "okay"
                 heapq.heappush(queue, new_input)
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
                 # visited[neighbor] = new_visit_cost
-                if len(new_path.operand_set()) == 1:
-                    visited[(neighbor, used_operand)] = new_visit_cost
+                visited[(neighbor, frozenset(new_path.operand_set()))] = new_visit_cost
                 
                 # counter += 1
                 
@@ -555,6 +520,13 @@ def minimal_set_solution(target, using, belts_per_source):
     print(f"NO PATH TO {target} FOUND")
     # This should be impossible in all cases where 1 exists
     return worst_path
+
+def non_empty_subsets(input_set):
+    subsets = []
+    for i in range(1, len(input_set) + 1):
+        subsets.extend(itertools.combinations(input_set, i))
+    return [set(subset) for subset in subsets]
+
 
 def make_worst_path(target, sorted_list, belts_per_source):
     assert sorted_list[0] == 1
@@ -827,13 +799,17 @@ def test_3():
     result = minimal_solution(number, allowed_numbers)
     assert str(result) == "((31^31)-1)/31"
 
+def subset_test_1():
+    s = {1, 2}
+    assert non_empty_subsets(s) == [{1}, {2}, {1, 2}]
+
 def test_set_1():
     allowed_numbers = [1, 2]
     number = 5
     result = minimal_set_solution(number, allowed_numbers, 2)
     assert result != None
     print(result)
-    assert str(result) in {"(1+2)+2"}
+    assert str(result) in {"(1+2)+2", "(2+2)+1"}
     # assert str(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
 
     number = 7
@@ -879,6 +855,8 @@ def run_tests():
     test_1()
     test_2()
     test_3()
+
+    subset_test_1()
 
     test_set_1()
     test_set_2()
