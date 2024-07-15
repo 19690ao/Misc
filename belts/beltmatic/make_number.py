@@ -458,7 +458,16 @@ def minimal_set_solution(target, using, belts_per_source):
     while queue:
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
-        print(f"{str(path)}={node}")
+        worse = False
+        for used_operands in non_empty_subsets(path.operand_set()):
+            if visited[(node, frozenset(used_operands))] <= path.sources():
+                worse = True
+                break
+        
+        if worse:
+            continue
+        visited[(node, frozenset(path.operand_set()))] = path.sources()
+        # print(f"{str(path)}={node}")
         # if old_operator == '/' and old_operand == 7 and node == 5: print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
@@ -511,7 +520,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
                 # visited[neighbor] = new_visit_cost
-                visited[(neighbor, frozenset(new_path.operand_set()))] = new_visit_cost
+                # visited[(neighbor, frozenset(new_path.operand_set()))] = new_visit_cost
                 
                 # counter += 1
                 
@@ -809,7 +818,7 @@ def test_set_1():
     result = minimal_set_solution(number, allowed_numbers, 2)
     assert result != None
     print(result)
-    assert str(result) in {"(1+2)+2", "(2+2)+1"}
+    assert str(result) in {"(1+2)+2"}
     # assert str(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
 
     number = 7
@@ -940,7 +949,7 @@ if __name__ == "__main__":
     numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
     # print(numbers, allowed_numbers)
     run_tests()
-    main(allowed_numbers, belts_per_source)
+    # main(allowed_numbers, belts_per_source)
     # sort_by_difficulty(numbers, allowed_numbers)
-    # sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
+    sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
     # test_div(allowed_numbers, 2000)
