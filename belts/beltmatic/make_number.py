@@ -452,7 +452,6 @@ def minimal_set_solution(target, using, belts_per_source):
 
     visited = defaultdict(lambda: float('inf'))
     worst_path = make_worst_path(target, sorted_using, belts_per_source)
-    # print("Finding worst score")
     worst_score = path_score(worst_path)
     edges = [(operator, operand) for operator in operator_symbols for operand in using]
     while queue:
@@ -467,7 +466,7 @@ def minimal_set_solution(target, using, belts_per_source):
         if worse:
             continue
         visited[(node, frozenset(path.operand_set()))] = path.sources()
-        # print(f"{str(path)}={node}")
+        print(f"{str(path)}={node}")
         # if old_operator == '/' and old_operand == 7 and node == 5: print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
@@ -949,7 +948,7 @@ if __name__ == "__main__":
     numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
     # print(numbers, allowed_numbers)
     run_tests()
-    # main(allowed_numbers, belts_per_source)
+    main(allowed_numbers, belts_per_source)
     # sort_by_difficulty(numbers, allowed_numbers)
-    sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
+    # sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
     # test_div(allowed_numbers, 2000)
