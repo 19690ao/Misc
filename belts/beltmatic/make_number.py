@@ -3,6 +3,7 @@ import heapq
 import math
 import time
 from collections import defaultdict
+from collections import frozenset
 
 MAX_INT = 2147483647
 MIN_INT = -2147483648
@@ -430,10 +431,6 @@ def minimal_solution(target: int, using: list) -> ExpressionPath:
     print(f"NO PATH TO {target} FOUND")
     return None
 
-def largest_divisor_in_sorted_list(number, sorted_list):
-    return next((num for num in reversed(sorted_list) if number % num == 0), 1)
-
-
 def minimal_set_solution(target, using, belts_per_source):
     print(f"Finding {target}")
     sorted_using = sorted(using)
@@ -461,7 +458,7 @@ def minimal_set_solution(target, using, belts_per_source):
     # print(queue)
 
     # Set the default function (UPPER BOUND)
-    def upper_bound(total):
+    def upper_bound(total, numbers_used):
         # largest_used_divisor = next((num for num in reversed(sorted_using) if total % num == 0), 1)
         # belts = round(total/largest_used_divisor)
         # # belts = total
@@ -498,18 +495,15 @@ def minimal_set_solution(target, using, belts_per_source):
         else:
             divisor = next((num for num in reversed(sorted_using) if total % num == 0), 1)
             belts = round(total/divisor)
-
+        return belts
         return math.ceil(belts/belts_per_source)
-    visited = DynamicDefaultDict(lambda x: upper_bound(x))
+    visited = DynamicDefaultDict(lambda x: upper_bound(*x))
     # occurences = occurences_in_list(numbers_in_path_list(path))
     # sources = sum([math.ceil(value/belts_per_source) for value in occurences.values()])
-    assert upper_bound(5)==visited[5]
-    # print("Finding largest divisor")
-    largest_used_divisor = largest_divisor_in_sorted_list(target, sorted_using)
+    # print("Finding largest divisor")+
     # print("Finding worst path")
     # path_# t0 = time.time()
     # ((i+1)*largest_used_divisor, ('+', largest_used_divisor))
-    edge = ('+', largest_used_divisor)
     # temp = [((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)]
     # path_# t1 = time.time()
     # print(f"Takes {round(path_t1-path_t0, 2)}s")
@@ -521,12 +515,12 @@ def minimal_set_solution(target, using, belts_per_source):
         _, path = heapq.heappop(queue)
         node, (old_operator, old_operand) = path[-1]
         print(f"{str(path)}={node}")
+        # if old_operator == '/' and old_operand == 7: print(f"{str(path)}={node}")
         if node == target:
             # print(str(path, operator_dict))
             return path
         else:
             # edges_# t0 = time.time()
-            first_operand = path[0][1][1]
             for edge in edges:
                 # t0 = time.time()
                 operator, operand = edge
@@ -549,13 +543,19 @@ def minimal_set_solution(target, using, belts_per_source):
                 # t0 = time.time()
                 new_length = len(path)+1
                 if '/' in operator_symbols and new_length>neighbor+1:
-                    # Making x is as easy as (n*x)/n, even with small belts_per_source
+                    # Making x is as easy as (n*x)/n=(n+n+n+..+n_x)/n, even with small belts_per_source
                     # There are x n's divided by 1 n, giving x+1 operands
                     continue
                 if '^' in operator_symbols and neighbor == MAX_INT and new_length>=math.ceil(math.log(max_using, MAX_INT)):
                     continue
-                if (neighbor%first_operand==0 and new_length>round(neighbor/first_operand)) or (neighbor%operand==0 and new_length>round(neighbor/operand)):
+                if (neighbor%old_operand==0 and new_length>round(neighbor/old_operand)) or \
+                    (neighbor%operand==0 and new_length>round(neighbor/operand)):
                     continue
+                if ((neighbor-1)%old_operand==0 and new_length>round((neighbor-1)/old_operand)+2) or \
+                    ((neighbor-1)%operand==0 and new_length>round((neighbor-1)/operand)+2):
+                    continue
+
+
                 # t1 = time.time()
                 # # if round(t1-t0,3)>=0.03: print(f"Step D took {round(t1-t0, 3)}s")
 
@@ -570,7 +570,8 @@ def minimal_set_solution(target, using, belts_per_source):
                 # Might be necessary to make this faster
                 # if max_occurence_in_path(new_path) > belts_per_source:
                 #     continue
-                
+                # if 7 == operand and neighbor == 49:
+                #     print("HELL")
                 
                 # t0 = time.time()
                 new_cost = path_score(new_path)
@@ -580,7 +581,8 @@ def minimal_set_solution(target, using, belts_per_source):
                 # print(f"{str(new_path)}={neighbor}")
                 # t0 = time.time()
                 # I can't think of a reason this would take 35s
-                new_visit_cost = sources_in_path(new_path)
+                # new_visit_cost =  new_path.sources()
+                new_visit_cost = new_length
                 if visited[neighbor] < new_visit_cost:
                     continue
                 # t1 = time.time()
@@ -594,7 +596,7 @@ def minimal_set_solution(target, using, belts_per_source):
                 heapq.heappush(queue, new_input)
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
-                visited[neighbor] = new_visit_cost
+                # visited[neighbor] = new_visit_cost
                 
                 # counter += 1
                 
@@ -606,6 +608,8 @@ def minimal_set_solution(target, using, belts_per_source):
 
 def make_worst_path(target, sorted_list, belts_per_source):
     assert sorted_list[0] == 1
+    if target == 49:
+        print("Huh?")
     tetration = False
     exponentiation = False
     path = None
@@ -615,7 +619,7 @@ def make_worst_path(target, sorted_list, belts_per_source):
     height = -1
     for base in reversed(sorted_list):
         if base == 1: continue
-        print(base, target)
+        # print(base, target)
         potential_power = round(math.log(target, base))
         is_base = base**potential_power==target
         if is_base:
@@ -639,7 +643,7 @@ def make_worst_path(target, sorted_list, belts_per_source):
     elif exponentiation:
         edge = ('*', largest_base)
         path = ExpressionPath([(largest_base**(i+1), edge) for i in range(power)], belts_per_source)
-        print(f"Exp = {path}")
+        # print(f"Exp = {path}")
     else:
         divisor = next((num for num in reversed(sorted_list) if target % num == 0), 1)
         edge = ('+', divisor)
@@ -682,10 +686,6 @@ def path_cmp(a: ExpressionPath, b: ExpressionPath) -> int:
         return int(operator_vals_a > operator_vals_b)*2-1
     print(f"No difference between {a} and {b}")
     return 0
-
-def sources_in_path(path: ExpressionPath) -> int:
-    result = path.sources()
-    return result
 
 def path_set_cmp(a: ExpressionPath, b: ExpressionPath):
     # t1 = tuple([(1, (None, 1)), (2, ('+', 1)), (3, ('+', 1))])
@@ -912,15 +912,9 @@ def test_set_2():
     print(result)
     assert str(result) in {"8^8"}
 
-def largest_divisor_test_1():
-    sorted_using = [i+1 for i in range(30)]
-    assert largest_divisor_in_sorted_list(387420489, sorted_using) == 27
-
 def run_tests():
     path_test_1()
     path_test_2()
-
-    largest_divisor_test_1()
 
     score_tests()
     test_1()
@@ -995,12 +989,13 @@ def replace_base(lst, base) -> int:
 
 if __name__ == "__main__":
     nonexistent = {10}
-    max_num = 38
+    max_num = 39
     # max_num = 2
     # If your belts_per_source is too high, this will take ages (ex. 1+1+1+1+1...)
     belts_per_source = 9
     # belts_per_source = 100000
     allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
+    allowed_numbers = [1, 9 , 29]
     numbers = [79312, 12279, 11058, 3988839]
     numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
     # print(numbers, allowed_numbers)
