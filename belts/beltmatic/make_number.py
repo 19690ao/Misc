@@ -3,7 +3,6 @@ import heapq
 import math
 import time
 from collections import defaultdict
-from collections import frozenset
 
 MAX_INT = 2147483647
 MIN_INT = -2147483648
@@ -458,55 +457,38 @@ def minimal_set_solution(target, using, belts_per_source):
     # print(queue)
 
     # Set the default function (UPPER BOUND)
-    def upper_bound(total, numbers_used):
-        # largest_used_divisor = next((num for num in reversed(sorted_using) if total % num == 0), 1)
-        # belts = round(total/largest_used_divisor)
-        # # belts = total
-        # return math.ceil(belts/belts_per_source)
-        assert sorted_using[0] == 1
-        if total in using: return 1
-        tetration = False
-        exponentiation = False
-        belts = None
-        power = -1
-        height = -1
-        for base in reversed(sorted_using):
-            if base == 1: continue
-            # print(total, base)
-            potential_power = round(math.log(total, base))
-            is_base = base**potential_power==total
-            if is_base:
-                if not exponentiation:
-                    power = potential_power
-                    exponentiation = True
-                # Check tetration base
-                potential_height = round(math.log(potential_power, base))
+    def upper_bound(total, number_used):
+        if total == number_used:
+            return 1
+        options = []
+        # print(total, number_used)
+        is_base = False
+        power = None
+        assert total > 0
+        if number_used != 1:
+            power = round(math.log(total, number_used))
+            is_base = number_used**power==total
+        if is_base:
+            options.append(power)
+            # Check for tetration
+            print(power, number_used)
+            if power != 0:
+                height = round(math.log(power, number_used))
                 # Calculate the tetration result
-                tetration_result = base ** (base ** (potential_height - 1))
+                tetration_result = number_used ** (number_used ** height)
                 if tetration_result == total:
-                    height = potential_height
-                    break
-        if height >= power:
-            tetration = False
-        if tetration:
-            belts = height
-        elif exponentiation:
-            belts = power
-        else:
-            divisor = next((num for num in reversed(sorted_using) if total % num == 0), 1)
-            belts = round(total/divisor)
+                    options.append(height+1)
+        if total%number_used==0:
+            options.append(round(total/number_used))
+        if total*number_used<=MAX_INT:
+            options.append(total+1)
+        
+        if not options:
+            options.append(float('inf'))
+        belts = min(options)
         return belts
-        return math.ceil(belts/belts_per_source)
+        
     visited = DynamicDefaultDict(lambda x: upper_bound(*x))
-    # occurences = occurences_in_list(numbers_in_path_list(path))
-    # sources = sum([math.ceil(value/belts_per_source) for value in occurences.values()])
-    # print("Finding largest divisor")+
-    # print("Finding worst path")
-    # path_# t0 = time.time()
-    # ((i+1)*largest_used_divisor, ('+', largest_used_divisor))
-    # temp = [((i+1)*largest_used_divisor, edge) for i in range(target//largest_used_divisor)]
-    # path_# t1 = time.time()
-    # print(f"Takes {round(path_t1-path_t0, 2)}s")
     worst_path = make_worst_path(target, sorted_using, belts_per_source)
     print("Finding worst score")
     worst_score = path_score(worst_path)
@@ -582,8 +564,13 @@ def minimal_set_solution(target, using, belts_per_source):
                 # t0 = time.time()
                 # I can't think of a reason this would take 35s
                 # new_visit_cost =  new_path.sources()
-                new_visit_cost = new_length
-                if visited[neighbor] < new_visit_cost:
+                new_visit_cost = new_length                
+                worse = False
+                for used_operand in new_path.operand_list():
+                    if visited[(neighbor, used_operand)] < new_visit_cost:
+                        worse = True
+                        break
+                if worse:
                     continue
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step F took {round(t1-t0, 3)}s")
@@ -597,6 +584,8 @@ def minimal_set_solution(target, using, belts_per_source):
                 # t1 = time.time()
                 # if round(t1-t0,3)>=0.1: print(f"Step H took {round(t1-t0, 3)}s")
                 # visited[neighbor] = new_visit_cost
+                if len(new_path.operand_list()) == 1:
+                    visited[(neighbor, used_operand)] = new_visit_cost
                 
                 # counter += 1
                 
@@ -912,6 +901,13 @@ def test_set_2():
     print(result)
     assert str(result) in {"8^8"}
 
+    allowed_numbers = [i+1 for i in range(20)]
+    number = 57
+    result = minimal_set_solution(number, allowed_numbers, 100)
+    assert result != None
+    print(result)
+    assert str(result) in {"(19+19)+19"}
+
 def run_tests():
     path_test_1()
     path_test_2()
@@ -995,7 +991,7 @@ if __name__ == "__main__":
     belts_per_source = 9
     # belts_per_source = 100000
     allowed_numbers = [i+1 for i in range(0, max_num) if i+1 not in nonexistent]
-    allowed_numbers = [1, 9 , 29]
+    # allowed_numbers = [1, 9 , 29]
     numbers = [79312, 12279, 11058, 3988839]
     numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
     # print(numbers, allowed_numbers)
