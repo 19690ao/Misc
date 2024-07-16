@@ -64,8 +64,50 @@ class ImmutableLinkedList:
             nodes.append(current_node.value)
             current_node = current_node.parent_node
         return iter(nodes[::-1])
+    
+    def __lt__(self, other):
+        # Check if 'other' is an instance of ImmutableLinkedList
+        if not isinstance(other, ImmutableLinkedList):
+            return False
 
+        # Check if both lists have the same length
+        if len(self) != len(other):
+            return len(self) < len(other)
 
+        # Compare the lists node by node
+        node_self = self.head
+        node_other = other.head
+        while node_self is not None and node_other is not None:
+            if node_self.value != node_other.value:
+                return node_self.value < node_other.value
+            node_self = node_self.parent_node
+            node_other = node_other.parent_node
+
+        # If we reached here, the lists are equal
+        return False
+    
+    def __eq__(self, other):
+        # Check if 'other' is an instance of ImmutableLinkedList
+        if not isinstance(other, ImmutableLinkedList):
+            return False
+
+        # Check if both lists have the same length
+        if len(self) != len(other):
+            return False
+
+        # Compare the lists node by node
+        node_self = self.head
+        node_other = other.head
+        while node_self is not None and node_other is not None:
+            if node_self.value != node_other.value:
+                return False
+            node_self = node_self.parent_node
+            node_other = node_other.parent_node
+
+        # If we reached here, the lists are equal
+        return True
+
+    
     def iter_excluding_ends(self):
         nodes = []
         current_node = self.tail
@@ -94,6 +136,7 @@ class ExpressionPath(ImmutableLinkedList):
         self.calculated_sources = None
         self.belts_per_source = belts_per_source
         self.calculated_max_occurence = None
+        self.calculated_max_operand = None
     
     def operand_occurences(self) -> defaultdict:
         if self.occurences is None:
@@ -153,19 +196,23 @@ class ExpressionPath(ImmutableLinkedList):
         copied.calculated_sources = self.calculated_sources
         
         # t0 = time.time()
-        if self.occurences is not None:
-            copied.occurences = self.occurences.copy()
+        copied.occurences = self.operand_occurences().copy()
         # t1 = time.time()
         # if round(t1-t0,3)>=0.1: print(f"Step J took {round(t1-t0, 3)}s")
         # The following is O(1)
         operand = value[1][1]
         copied.calculated_sum = self.sum() + operand
+        # print(copied.occurences, operand)
+        # print(copied.occurences[operand])
         copied.occurences[operand] += 1
         if copied.occurences[operand]%copied.belts_per_source==1:
-            copied.calculated_sources += 1
+            copied.calculated_sources = self.sources()+1
         copied.calculated_max_occurence = self.calculated_max_occurence
         if copied.occurences[operand] > copied.max_occurence():
             copied.calculated_max_occurence = copied.occurences[operand]
+        copied.calculated_max_operand = self.max_operand()
+        if operand > copied.calculated_max_operand:
+            copied.calculated_max_operand = operand
         return copied
 
     def __str__(self):
@@ -188,6 +235,11 @@ class ExpressionPath(ImmutableLinkedList):
         if self.calculated_max_occurence is None:
             self.calculated_max_occurence = max(self.operand_occurences().values())
         return self.calculated_max_occurence
+
+    def max_operand(self):
+        if self.calculated_max_operand is None:
+            self.calculated_max_operand = max(self.operand_set())
+        return self.calculated_max_operand
 
     def operand_set(self):
         return set(self.operand_list())
@@ -428,6 +480,7 @@ def minimal_set_solution(target, using, belts_per_source):
     print(f"Finding {target}")
     sorted_using = sorted(using)
     min_using = sorted_using[0]
+    assert min_using >= 1
     max_using = sorted_using[-1]
     using = set(using)
     # if target in using:
@@ -437,14 +490,24 @@ def minimal_set_solution(target, using, belts_per_source):
     # Consistent -> h(n) <= c(n,a,n')+h(n')
     # Admissable -> h(n) <= h*(n)
     # Consistent -> Admissable
-    # def heuristic(number):
-    #     return abs(target - number)
-    
+    def heuristic(path: ExpressionPath) -> int:
+        # You can treat this as "best case" for finishing a problem
+        node, (old_operator, old_operand) = path[-1]
+        minimum_sources_from_target = 0
+        return path.sources()+minimum_sources_from_target, len(path), path.max_operand(), path_score(path)# , abs(target-node)
+    # The cost can be sources
+    # h*(n) is the amount of sources it would actually take to get to n
+    # h(n) <= the true amount of sources required, so undershoot (lower bound)
+    # c(n, a, n') is the amount of added sources it took to get from n to n'
+    # This can only be 0 or 1
+    # If 0, h(n) <= h(n') holds true since they would have equal sources
+    # If 1, h(n) < h(n') since h(n')=h(n)+1
+     
     # counter = 1
     path_score = functools.cmp_to_key(path_set_cmp)
     def queue_input(path): # , counter=0):
         # number = path[-1][0]
-        return (path_score(path), path)
+        return (heuristic(path), path)
     
     queue = [queue_input(ExpressionPath([(number, (None, number))], belts_per_source=belts_per_source)) for number in using]
     heapq.heapify(queue)
@@ -599,7 +662,7 @@ def path_cmp(a, b) -> int:
     if a_unique != b_unique:
         return int(a_unique > b_unique)*2-1
     
-    max_a, max_b = max(a_numbers), max(b_numbers)
+    max_a, max_b = a.max_operand(), b.max_operand()
     if max_a != max_b:
         return int(max_a > max_b)*2-1
     sum_a, sum_b = sum(a_numbers), sum(b_numbers)
@@ -702,6 +765,12 @@ def path_test_2():
     assert new_path.sources() == 2
     assert path.operand_occurences()[1] == 2
     assert path.sources() == 1
+
+    path = ExpressionPath(path_lst, 2)
+    path2 = path.appended((4, ('*', 2)))
+    path_lst.append((4, ('*', 2)))
+    path1 = ExpressionPath(path_lst, 2)
+    assert path1 == path2
 
 
 def score_tests():
@@ -818,6 +887,7 @@ def test_set_1():
     assert result != None
     print(result)
     assert str(result) in {"(1+2)+2"}
+    # assert str(result) in {"(1+2)+2", "(2+2)+1"}
     # assert str(result) in {"(1+2)+2", "(2+1)+2", "(2+2)+1", "(2*2)+1", "(2^2)+1"}
 
     number = 7
@@ -948,7 +1018,7 @@ if __name__ == "__main__":
     numbers = [i+1 for i in range(0, 104)]# if i+1 not in allowed_numbers]
     # print(numbers, allowed_numbers)
     run_tests()
-    main(allowed_numbers, belts_per_source)
+    # main(allowed_numbers, belts_per_source)
     # sort_by_difficulty(numbers, allowed_numbers)
-    # sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
+    sort_by_set_difficulty(numbers, allowed_numbers, belts_per_source)
     # test_div(allowed_numbers, 2000)
